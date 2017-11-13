@@ -1,0 +1,17 @@
+.qmake.stash
+Makefile
+*.o
+libv_repExtVision.1.0.0.dylib
+libv_repExtVision.1.0.dylib
+libv_repExtVision.1.dylib
+libv_repExtVision.dylib
+libv_repExtVision.so
+libv_repExtVision.so.1
+libv_repExtVision.so.1.0
+libv_repExtVision.so.1.0.0
+Makefile.Debug
+Makefile.Release
+object_script.*.Debug
+object_script.*.Release
+debug/
+release/
