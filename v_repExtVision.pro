@@ -8,6 +8,7 @@ DEFINES -= UNICODE
 DEFINES += QT_COMPIL
 CONFIG += shared
 INCLUDEPATH += "../include"
+INCLUDEPATH += "../v_repMath"
 
 *-msvc* {
     QMAKE_CXXFLAGS += -O2
@@ -54,9 +55,18 @@ SOURCES += \
     visionVelodyneHDL64ECont.cpp \
     visionVelodyneVPL16.cpp \
     visionVelodyneVPL16Cont.cpp \
+    imageProcess.cpp \
     ../common/scriptFunctionData.cpp \
     ../common/scriptFunctionDataItem.cpp \
     ../common/v_repLib.cpp \
+    ../v_repMath/MyMath.cpp \
+    ../v_repMath/3Vector.cpp \
+    ../v_repMath/4Vector.cpp \
+    ../v_repMath/6Vector.cpp \
+    ../v_repMath/7Vector.cpp \
+    ../v_repMath/3X3Matrix.cpp \
+    ../v_repMath/4X4Matrix.cpp \
+    ../v_repMath/6X6Matrix.cpp \
 
 HEADERS +=\
     v_repExtVision.h \
@@ -66,9 +76,19 @@ HEADERS +=\
     visionVelodyneHDL64ECont.h \
     visionVelodyneVPL16.h \
     visionVelodyneVPL16Cont.h \
+    imageProcess.h \
     ../include/scriptFunctionData.h \
     ../include/scriptFunctionDataItem.h \
     ../include/v_repLib.h \
+    ../v_repMath/MyMath.h \
+    ../v_repMath/mathDefines.h \
+    ../v_repMath/3Vector.h \
+    ../v_repMath/4Vector.h \
+    ../v_repMath/6Vector.h \
+    ../v_repMath/7Vector.h \
+    ../v_repMath/3X3Matrix.h \
+    ../v_repMath/4X4Matrix.h \
+    ../v_repMath/6X6Matrix.h \
 
 unix:!symbian {
     maemo5 {
