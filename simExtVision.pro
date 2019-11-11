@@ -1,14 +1,14 @@
 QT -= core
 QT -= gui
 
-TARGET = v_repExtVision
+TARGET = simExtVision
 TEMPLATE = lib
 
 DEFINES -= UNICODE
 DEFINES += QT_COMPIL
 CONFIG += shared
 INCLUDEPATH += "../include"
-INCLUDEPATH += "../v_repMath"
+INCLUDEPATH += "../simMath"
 
 *-msvc* {
     QMAKE_CXXFLAGS += -O2
@@ -36,19 +36,19 @@ INCLUDEPATH += "../v_repMath"
 
 
 win32 {
-    DEFINES += WIN_VREP
+    DEFINES += WIN_SIM
 }
 
 macx {
-    DEFINES += MAC_VREP
+    DEFINES += MAC_SIM
 }
 
 unix:!macx {
-    DEFINES += LIN_VREP
+    DEFINES += LIN_SIM
 }
 
 SOURCES += \
-    v_repExtVision.cpp \
+    simExtVision.cpp \
     visionTransf.cpp \
     visionTransfCont.cpp \
     visionVelodyneHDL64E.cpp \
@@ -58,18 +58,18 @@ SOURCES += \
     imageProcess.cpp \
     ../common/scriptFunctionData.cpp \
     ../common/scriptFunctionDataItem.cpp \
-    ../common/v_repLib.cpp \
-    ../v_repMath/MyMath.cpp \
-    ../v_repMath/3Vector.cpp \
-    ../v_repMath/4Vector.cpp \
-    ../v_repMath/6Vector.cpp \
-    ../v_repMath/7Vector.cpp \
-    ../v_repMath/3X3Matrix.cpp \
-    ../v_repMath/4X4Matrix.cpp \
-    ../v_repMath/6X6Matrix.cpp \
+    ../common/simLib.cpp \
+    ../simMath/MyMath.cpp \
+    ../simMath/3Vector.cpp \
+    ../simMath/4Vector.cpp \
+    ../simMath/6Vector.cpp \
+    ../simMath/7Vector.cpp \
+    ../simMath/3X3Matrix.cpp \
+    ../simMath/4X4Matrix.cpp \
+    ../simMath/6X6Matrix.cpp \
 
 HEADERS +=\
-    v_repExtVision.h \
+    simExtVision.h \
     visionTransf.h \
     visionTransfCont.h \
     visionVelodyneHDL64E.h \
@@ -79,16 +79,16 @@ HEADERS +=\
     imageProcess.h \
     ../include/scriptFunctionData.h \
     ../include/scriptFunctionDataItem.h \
-    ../include/v_repLib.h \
-    ../v_repMath/MyMath.h \
-    ../v_repMath/mathDefines.h \
-    ../v_repMath/3Vector.h \
-    ../v_repMath/4Vector.h \
-    ../v_repMath/6Vector.h \
-    ../v_repMath/7Vector.h \
-    ../v_repMath/3X3Matrix.h \
-    ../v_repMath/4X4Matrix.h \
-    ../v_repMath/6X6Matrix.h \
+    ../include/simLib.h \
+    ../simMath/MyMath.h \
+    ../simMath/mathDefines.h \
+    ../simMath/3Vector.h \
+    ../simMath/4Vector.h \
+    ../simMath/6Vector.h \
+    ../simMath/7Vector.h \
+    ../simMath/3X3Matrix.h \
+    ../simMath/4X4Matrix.h \
+    ../simMath/6X6Matrix.h \
 
 unix:!symbian {
     maemo5 {
