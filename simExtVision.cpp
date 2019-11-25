@@ -693,18 +693,22 @@ void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
 #define LUA_WORKIMGTOSENSORIMG_COMMAND "simVision.workImgToSensorImg"
 
 const int inArgs_WORKIMGTOSENSORIMG[]={
-    1,
+    2,
     sim_script_arg_int32,0,
+    sim_script_arg_bool,0,
 };
 
 void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOSENSORIMG,inArgs_WORKIMGTOSENSORIMG[0],LUA_WORKIMGTOSENSORIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOSENSORIMG,inArgs_WORKIMGTOSENSORIMG[0]-1,LUA_WORKIMGTOSENSORIMG_COMMAND))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         CVisionSensorData* imgData=getImgData(handle);
+        bool removeImg=true;
+        if ( (inData->size()>1)&&(inData->at(1).boolData.size()==1) )
+            removeImg=inData->at(1).boolData[0];
         if (imgData!=nullptr)
         {
             int res[2];
@@ -713,7 +717,7 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
                 simSetVisionSensorImage(handle,imgData->workImg);
             else
                 simSetLastError(LUA_SENSORIMGTOWORKIMG_COMMAND,"Resolution mismatch.");
-            if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr) )
+            if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr)&&removeImg )
                 removeImgData(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
         }
         else
@@ -3475,7 +3479,7 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     // basic vision sensor processing:
     simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORIMGTOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SENSORIMGTOWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORIMG_COMMAND,"(number visionSensorHandle)"),LUA_WORKIMGTOSENSORIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORIMG_COMMAND,"(number visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER1_COMMAND,"(number visionSensorHandle)"),LUA_WORKIMGTOBUFFER1_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER2_COMMAND,"(number visionSensorHandle)"),LUA_WORKIMGTOBUFFER2_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_SWAPBUFFERS_COMMAND_PLUGIN,strConCat("",LUA_SWAPBUFFERS_COMMAND,"(number visionSensorHandle)"),LUA_SWAPBUFFERS_CALLBACK);
