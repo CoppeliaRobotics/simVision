@@ -729,6 +729,54 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------------------
+// simVision.workImgToSensorDepthMap
+// --------------------------------------------------------------------------------------
+#define LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN "simVision.workImgToSensorDepthMap@Vision"
+#define LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND "simVision.workImgToSensorDepthMap"
+
+const int inArgs_WORKIMGTOSENSORDEPTHMAP[]={
+    2,
+    sim_script_arg_int32,0,
+    sim_script_arg_bool,0,
+};
+
+void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
+{
+    CScriptFunctionData D;
+    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOSENSORDEPTHMAP,inArgs_WORKIMGTOSENSORDEPTHMAP[0]-1,LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND))
+    {
+        std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
+        int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
+        CVisionSensorData* imgData=getImgData(handle);
+        bool removeImg=true;
+        if ( (inData->size()>1)&&(inData->at(1).boolData.size()==1) )
+            removeImg=inData->at(1).boolData[0];
+        if (imgData!=nullptr)
+        {
+            int res[2];
+            simGetVisionSensorResolution(handle,res);
+            if ( (imgData->resolution[0]==res[0])&&(imgData->resolution[1]==res[1]) )
+            {
+                float* tmpDepthMap=new float[res[0]*res[1]];
+                for (size_t i=0;i<res[0]*res[1];i++)
+                    tmpDepthMap[i]=(imgData->workImg[3*i+0]+imgData->workImg[3*i+1]+imgData->workImg[3*i+2])/3.0f;
+                simSetVisionSensorImage(handle|sim_handleflag_depthbuffer,tmpDepthMap);
+                delete[] tmpDepthMap;
+            }
+            else
+                simSetLastError(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"Resolution mismatch.");
+            if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr)&&removeImg )
+                removeImgData(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
+        }
+        else
+            simSetLastError(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"Invalid handle or work image not initialized.");
+    }
+    D.pushOutData(CScriptFunctionDataItem(false));
+    D.writeDataToStack(p->stackID);
+}
+// --------------------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------------------
 // simVision.workImgToBuffer1
 // --------------------------------------------------------------------------------------
 #define LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN "simVision.workImgToBuffer1@Vision"
@@ -3480,6 +3528,7 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORIMGTOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SENSORIMGTOWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORIMG_COMMAND,"(number visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"(number visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER1_COMMAND,"(number visionSensorHandle)"),LUA_WORKIMGTOBUFFER1_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER2_COMMAND,"(number visionSensorHandle)"),LUA_WORKIMGTOBUFFER2_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_SWAPBUFFERS_COMMAND_PLUGIN,strConCat("",LUA_SWAPBUFFERS_COMMAND,"(number visionSensorHandle)"),LUA_SWAPBUFFERS_CALLBACK);
