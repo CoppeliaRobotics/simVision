@@ -25,10 +25,24 @@
 #define CONCAT(x,y,z) x y z
 #define strConCat(x,y,z)    CONCAT(x,y,z)
 
-LIBRARY simLib;
-CVisionTransfCont* visionTransfContainer;
-CVisionVelodyneHDL64ECont* visionVelodyneHDL64EContainer;
-CVisionVelodyneVPL16Cont* visionVelodyneVPL16Container;
+static LIBRARY simLib;
+static CVisionTransfCont* visionTransfContainer;
+static CVisionVelodyneHDL64ECont* visionVelodyneHDL64EContainer;
+static CVisionVelodyneVPL16Cont* visionVelodyneVPL16Container;
+
+bool canOutputMsg(int msgType)
+{
+    int plugin_verbosity = sim_verbosity_default;
+    simGetModuleInfo("Cam",sim_moduleinfo_verbosity,nullptr,&plugin_verbosity);
+    return(plugin_verbosity>=msgType);
+}
+
+void outputMsg(int msgType,const char* msg)
+{
+    if (canOutputMsg(msgType))
+        printf("%s\n",msg);
+}
+
 
 // Following few for backward compatibility:
 #define LUA_HANDLESPHERICAL_COMMANDOLD_PLUGIN "simExtVision_handleSpherical@Vision"
@@ -3483,24 +3497,14 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simLib=loadSimLibrary(temp.c_str());
     if (simLib==NULL)
     {
-        std::cout << "Error, could not find or correctly load the CoppeliaSim library. Cannot start 'Vision' plugin.\n";
+        outputMsg(sim_verbosity_errors,"simExtVision plugin error: could not find or correctly load the CoppeliaSim library. Cannot start 'Vision' plugin.");
         return(0); // Means error, CoppeliaSim will unload this plugin
     }
     if (getSimProcAddresses(simLib)==0)
     {
-        std::cout << "Error, could not find all required functions in the CoppeliaSim library. Cannot start 'Vision' plugin.\n";
+        outputMsg(sim_verbosity_errors,"simExtVision plugin error: could not find all required functions in the CoppeliaSim library. Cannot start 'Vision' plugin.");
         unloadSimLibrary(simLib);
         return(0); // Means error, CoppeliaSim will unload this plugin
-    }
-
-    int simVer,simRev;
-    simGetIntegerParameter(sim_intparam_program_version,&simVer);
-    simGetIntegerParameter(sim_intparam_program_revision,&simRev);
-    if( (simVer<30400) || ((simVer==30400)&&(simRev<9)) )
-    {
-        std::cout << "Sorry, your CoppeliaSim copy is somewhat old, CoppeliaSim 3.4.0 rev9 or higher is required. Cannot start 'Vision' plugin.\n";
-        unloadSimLibrary(simLib);
-        return(0);
     }
 
     simRegisterScriptVariable("simVision","require('simExtVision')",0);
