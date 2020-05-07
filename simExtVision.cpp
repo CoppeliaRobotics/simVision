@@ -3497,12 +3497,12 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simLib=loadSimLibrary(temp.c_str());
     if (simLib==NULL)
     {
-        outputMsg(sim_verbosity_errors,"simExtVision plugin error: could not find or correctly load the CoppeliaSim library. Cannot start 'Vision' plugin.");
+        outputMsg(sim_verbosity_errors,"simExtVision: error: could not find or correctly load the CoppeliaSim library. Cannot start 'Vision' plugin.");
         return(0); // Means error, CoppeliaSim will unload this plugin
     }
     if (getSimProcAddresses(simLib)==0)
     {
-        outputMsg(sim_verbosity_errors,"simExtVision plugin error: could not find all required functions in the CoppeliaSim library. Cannot start 'Vision' plugin.");
+        outputMsg(sim_verbosity_errors,"simExtVision: error: could not find all required functions in the CoppeliaSim library. Cannot start 'Vision' plugin.");
         unloadSimLibrary(simLib);
         return(0); // Means error, CoppeliaSim will unload this plugin
     }
