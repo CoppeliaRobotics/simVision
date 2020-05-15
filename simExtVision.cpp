@@ -30,19 +30,6 @@ static CVisionTransfCont* visionTransfContainer;
 static CVisionVelodyneHDL64ECont* visionVelodyneHDL64EContainer;
 static CVisionVelodyneVPL16Cont* visionVelodyneVPL16Container;
 
-bool canOutputMsg(int msgType)
-{
-    int plugin_verbosity = sim_verbosity_default;
-    simGetModuleInfo("Cam",sim_moduleinfo_verbosity,nullptr,&plugin_verbosity);
-    return(plugin_verbosity>=msgType);
-}
-
-void outputMsg(int msgType,const char* msg)
-{
-    if (canOutputMsg(msgType))
-        printf("%s\n",msg);
-}
-
 
 // Following few for backward compatibility:
 #define LUA_HANDLESPHERICAL_COMMANDOLD_PLUGIN "simExtVision_handleSpherical@Vision"
@@ -3497,12 +3484,12 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simLib=loadSimLibrary(temp.c_str());
     if (simLib==NULL)
     {
-        outputMsg(sim_verbosity_errors,"simExtVision: error: could not find or correctly load the CoppeliaSim library. Cannot start 'Vision' plugin.");
+        printf("simExtVision: error: could not find or correctly load the CoppeliaSim library. Cannot start the plugin.\n"); // cannot use simAddLog here.
         return(0); // Means error, CoppeliaSim will unload this plugin
     }
     if (getSimProcAddresses(simLib)==0)
     {
-        outputMsg(sim_verbosity_errors,"simExtVision: error: could not find all required functions in the CoppeliaSim library. Cannot start 'Vision' plugin.");
+        printf("simExtVision: error: could not find all required functions in the CoppeliaSim library. Cannot start the plugin.\n"); // cannot use simAddLog here.
         unloadSimLibrary(simLib);
         return(0); // Means error, CoppeliaSim will unload this plugin
     }
