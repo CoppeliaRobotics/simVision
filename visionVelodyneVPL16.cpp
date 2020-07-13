@@ -77,7 +77,7 @@ bool CVisionVelodyneVPL16::doAllObjectsExistAndAreVisionSensors()
     return(true);
 }
 
-bool CVisionVelodyneVPL16::handle(float dt,std::vector<float>& pts)
+bool CVisionVelodyneVPL16::handle(float dt,std::vector<float>& pts,bool getAbsPts)
 {
     pts.clear();
     bool retVal=true;
@@ -103,6 +103,8 @@ bool CVisionVelodyneVPL16::handle(float dt,std::vector<float>& pts)
             simRemovePointsFromPointCloud(_newPtCloudHandle,0,0,0,0.0,0);
         _ptCloudHandle=-1;
         int existingDisplayPointsSize=int(_displayPtsXyz.size());
+        float m0[12];
+        simGetObjectMatrix(_visionSensorHandles[0],-1,m0);
         for (int i=0;i<4;i++)
         {
             bool doIt=false;
@@ -154,6 +156,8 @@ bool CVisionVelodyneVPL16::handle(float dt,std::vector<float>& pts)
                                         float r=sqrt(rr);
                                         if (_cartesianCoords)
                                         {
+                                            if (getAbsPts)
+                                                simTransformVector(m0,p);
                                             pts.push_back(p[0]);
                                             pts.push_back(p[1]);
                                             pts.push_back(p[2]);

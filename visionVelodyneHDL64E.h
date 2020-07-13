@@ -11,7 +11,7 @@ public:
     int getVelodyneHandle();
     bool areVisionSensorsExplicitelyHandled();
     bool doAllObjectsExistAndAreVisionSensors();
-    bool handle(float dt,std::vector<float>& pts);
+    bool handle(float dt,std::vector<float>& pts,bool getAbsPts);
 
 private:
     void _removePointsBetween(float lowAngle,float range);

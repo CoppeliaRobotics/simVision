@@ -338,19 +338,37 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
     CScriptFunctionData D;
     std::vector<float> pts;
     bool result=false;
+    bool codedString=false;
     if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEHDL64E,inArgs_HANDLEVELODYNEHDL64E[0],LUA_HANDLEVELODYNEHDL64E_COMMAND))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=inData->at(0).int32Data[0];
+        bool absCoords=false;
+        if (handle>=0)
+        {
+            codedString=((handle&sim_handleflag_codedstring)!=0);
+            absCoords=((handle&sim_handleflag_abscoords)!=0);
+            handle=handle&0x000fffff;
+        }
         float dt=inData->at(1).floatData[0];
         CVisionVelodyneHDL64E* obj=visionVelodyneHDL64EContainer->getObject(handle);
         if (obj!=NULL)
-            result=obj->handle(dt,pts);
+            result=obj->handle(dt,pts,absCoords);
         else
             simSetLastError(LUA_HANDLEVELODYNEHDL64E_COMMAND,"Invalid handle."); // output an error
     }
     if (result)
-        D.pushOutData(CScriptFunctionDataItem(pts));
+    {
+        if (codedString)
+        {
+            if (pts.size()>0)
+                D.pushOutData(CScriptFunctionDataItem((char*)&pts[0],pts.size()*sizeof(float)));
+            else
+                D.pushOutData(CScriptFunctionDataItem(nullptr,0));
+        }
+        else
+            D.pushOutData(CScriptFunctionDataItem(pts));
+    }
     D.writeDataToStack(p->stackID);
 }
 // --------------------------------------------------------------------------------------
@@ -479,19 +497,37 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
     CScriptFunctionData D;
     std::vector<float> pts;
     bool result=false;
+    bool codedString=false;
     if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEVPL16,inArgs_HANDLEVELODYNEVPL16[0],LUA_HANDLEVELODYNEVPL16_COMMAND))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=inData->at(0).int32Data[0];
+        bool absCoords=false;
+        if (handle>=0)
+        {
+            codedString=((handle&sim_handleflag_codedstring)!=0);
+            absCoords=((handle&sim_handleflag_abscoords)!=0);
+            handle=handle&0x000fffff;
+        }
         float dt=inData->at(1).floatData[0];
         CVisionVelodyneVPL16* obj=visionVelodyneVPL16Container->getObject(handle);
         if (obj!=NULL)
-            result=obj->handle(dt,pts);
+            result=obj->handle(dt,pts,absCoords);
         else
             simSetLastError(LUA_HANDLEVELODYNEVPL16_COMMAND,"Invalid handle."); // output an error
     }
     if (result)
-        D.pushOutData(CScriptFunctionDataItem(pts));
+    {
+        if (codedString)
+        {
+            if (pts.size()>0)
+                D.pushOutData(CScriptFunctionDataItem((char*)&pts[0],pts.size()*sizeof(float)));
+            else
+                D.pushOutData(CScriptFunctionDataItem(nullptr,0));
+        }
+        else
+            D.pushOutData(CScriptFunctionDataItem(pts));
+    }
     D.writeDataToStack(p->stackID);
 }
 // --------------------------------------------------------------------------------------
@@ -3086,7 +3122,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
         bool absCoords=false;
         if (hhandle>=0)
         {
-            absCoords=((hhandle&0x0ff00000)&sim_handleflag_abscoords!=0);
+            absCoords=((hhandle&sim_handleflag_abscoords)!=0);
             hhandle=hhandle&0x000fffff;
         }
 
@@ -3102,7 +3138,6 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
             float q[4];
             simGetObjectQuaternion(handle,-1,q);
             sensorTr.Q=C4Vector(q[3],q[0],q[1],q[2]); // CoppeliaSim quaternion, internally: w x y z, at interfaces: x y z w
-
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
 
@@ -3377,7 +3412,7 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
         bool absCoords=false;
         if (hhandle>=0)
         {
-            absCoords=((hhandle&0x0ff00000)&sim_handleflag_abscoords!=0);
+            absCoords=((hhandle&sim_handleflag_abscoords)!=0);
             hhandle=hhandle&0x000fffff;
         }
         int handle=getVisionSensorHandle(hhandle,p->objectID);
