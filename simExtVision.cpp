@@ -6,7 +6,7 @@
 #include "visionVelodyneHDL64ECont.h"
 #include "visionVelodyneVPL16Cont.h"
 #include "imageProcess.h"
-#include "3Vector.h"
+#include "7Vector.h"
 #include <map>
 #include <algorithm>
 
@@ -3082,13 +3082,27 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
     if (D.readDataFromStack(p->stackID,inArgs_COORDINATESFROMWORKIMG,inArgs_COORDINATESFROMWORKIMG[0],LUA_COORDINATESFROMWORKIMG_COMMAND))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
-        int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
+        int hhandle=inData->at(0).int32Data[0];
+        bool absCoords=false;
+        if (hhandle>=0)
+        {
+            absCoords=((hhandle&0x0ff00000)&sim_handleflag_abscoords!=0);
+            hhandle=hhandle&0x000fffff;
+        }
+
+        int handle=getVisionSensorHandle(hhandle,p->objectID);
         int ptCntX=inData->at(1).int32Data[0];
         int ptCntY=inData->at(1).int32Data[1];
         bool angularSpace=inData->at(2).boolData[0];
         CVisionSensorData* imgData=getImgData(handle);
         if (imgData!=nullptr)
         {
+            C7Vector sensorTr;
+            simGetObjectPosition(handle,-1,sensorTr.X.data);
+            float q[4];
+            simGetObjectQuaternion(handle,-1,q);
+            sensorTr.Q=C4Vector(q[3],q[0],q[1],q[2]); // CoppeliaSim quaternion, internally: w x y z, at interfaces: x y z w
+
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
 
@@ -3184,6 +3198,8 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         if (l>farthestValue)
                         {
                             v=(v/l)*farthestValue;
+                            if (absCoords)
+                                v=sensorTr*v;
                             returnData.push_back(v(0));
                             returnData.push_back(v(1));
                             returnData.push_back(v(2));
@@ -3191,6 +3207,8 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         }
                         else
                         {
+                            if (absCoords)
+                                v=sensorTr*v;
                             returnData.push_back(v(0));
                             returnData.push_back(v(1));
                             returnData.push_back(v(2));
@@ -3227,9 +3245,19 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         int indexP=3*(xRow+yRow*sizeX);
                         float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
                         float zDist=depthThresh+intensity*depthRange;
-                        returnData.push_back(xDist);
-                        returnData.push_back(yDist);
-                        returnData.push_back(zDist);
+                        if (absCoords)
+                        {
+                            C3Vector absv(sensorTr*C3Vector(xDist,yDist,zDist));
+                            returnData.push_back(absv(0));
+                            returnData.push_back(absv(1));
+                            returnData.push_back(absv(2));
+                        }
+                        else
+                        {
+                            returnData.push_back(xDist);
+                            returnData.push_back(yDist);
+                            returnData.push_back(zDist);
+                        }
                         returnData.push_back(zDist);
                         xDist+=dx;
                     }
@@ -3345,13 +3373,26 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
     if (D.readDataFromStack(p->stackID,inArgs_VELODYNEDATAFROMWORKIMG,inArgs_VELODYNEDATAFROMWORKIMG[0],LUA_VELODYNEDATAFROMWORKIMG_COMMAND))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
-        int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
+        int hhandle=inData->at(0).int32Data[0];
+        bool absCoords=false;
+        if (hhandle>=0)
+        {
+            absCoords=((hhandle&0x0ff00000)&sim_handleflag_abscoords!=0);
+            hhandle=hhandle&0x000fffff;
+        }
+        int handle=getVisionSensorHandle(hhandle,p->objectID);
         int xPtCnt=inData->at(1).int32Data[0];
         int yPtCnt=inData->at(1).int32Data[1];
         float vAngle=inData->at(2).floatData[0];
         CVisionSensorData* imgData=getImgData(handle);
         if (imgData!=nullptr)
         {
+            C7Vector sensorTr;
+            simGetObjectPosition(handle,-1,sensorTr.X.data);
+            float q[4];
+            simGetObjectQuaternion(handle,-1,q);
+            sensorTr.Q=C4Vector(q[3],q[0],q[1],q[2]); // CoppeliaSim quaternion, internally: w x y z, at interfaces: x y z w
+
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
 
@@ -3426,6 +3467,8 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         if (l>farthestValue)
                         {
                             v=(v/l)*farthestValue;
+                            if (absCoords)
+                                v=sensorTr*v;
                             returnData.push_back(v(0));
                             returnData.push_back(v(1));
                             returnData.push_back(v(2));
@@ -3433,6 +3476,8 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         }
                         else
                         {
+                            if (absCoords)
+                                v=sensorTr*v;
                             returnData.push_back(v(0));
                             returnData.push_back(v(1));
                             returnData.push_back(v(2));
