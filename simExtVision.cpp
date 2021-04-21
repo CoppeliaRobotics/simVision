@@ -3105,9 +3105,10 @@ void LUA_RECTANGULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
 #define LUA_COORDINATESFROMWORKIMG_COMMAND "simVision.coordinatesFromWorkImg"
 
 const int inArgs_COORDINATESFROMWORKIMG[]={
-    3,
+    4,
     sim_script_arg_int32,0,
     sim_script_arg_int32|sim_lua_arg_table,2,
+    sim_script_arg_bool,0,
     sim_script_arg_bool,0,
 };
 
@@ -3115,7 +3116,8 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     std::vector<float> returnData;
-    if (D.readDataFromStack(p->stackID,inArgs_COORDINATESFROMWORKIMG,inArgs_COORDINATESFROMWORKIMG[0],LUA_COORDINATESFROMWORKIMG_COMMAND))
+    std::vector<unsigned char> returnCol;
+    if (D.readDataFromStack(p->stackID,inArgs_COORDINATESFROMWORKIMG,inArgs_COORDINATESFROMWORKIMG[0]-1,LUA_COORDINATESFROMWORKIMG_COMMAND))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int hhandle=inData->at(0).int32Data[0];
@@ -3130,9 +3132,14 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
         int ptCntX=inData->at(1).int32Data[0];
         int ptCntY=inData->at(1).int32Data[1];
         bool angularSpace=inData->at(2).boolData[0];
+        bool returnRgb=false;
+        if (inData->size()>=4)
+            returnRgb=inData->at(3).boolData[0];
         CVisionSensorData* imgData=getImgData(handle);
         if (imgData!=nullptr)
         {
+            if (imgData->buff1Img==nullptr)
+                returnRgb=false;
             C7Vector sensorTr;
             simGetObjectPosition(handle,-1,sensorTr.X.data);
             float q[4];
@@ -3219,6 +3226,12 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                             float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
                             float zDist=depthThresh+intensity*depthRange;
                             v.set(tanXDistTxAlpha*xBeta*zDist,tanYDistTyAlpha*yBeta*zDist,zDist);
+                            if (returnRgb)
+                            {
+                                returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
+                                returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+1]*255.1f));
+                                returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+2]*255.1f));
+                            }
                         }
                         else
                         {
@@ -3227,6 +3240,12 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                             float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
                             float zDist=depthThresh+intensity*depthRange;
                             v.set(tan(xAngle*0.5f)*xDist/(xAngle*0.5f)*zDist,tan(yAngle*0.5f)*yDist/(yAngle*0.5f)*zDist,zDist);
+                            if (returnRgb)
+                            {
+                                returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
+                                returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+1]*255.1f));
+                                returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+2]*255.1f));
+                            }
                         }
 
                         float l=v.getLength();
@@ -3280,6 +3299,12 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         int indexP=3*(xRow+yRow*sizeX);
                         float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
                         float zDist=depthThresh+intensity*depthRange;
+                        if (returnRgb)
+                        {
+                            returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
+                            returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+1]*255.1f));
+                            returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+2]*255.1f));
+                        }
                         if (absCoords)
                         {
                             C3Vector absv(sensorTr*C3Vector(xDist,yDist,zDist));
@@ -3305,7 +3330,11 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     if (returnData.size()>0)
+    {
         D.pushOutData(CScriptFunctionDataItem((char*)(&returnData[0]),returnData.size()*sizeof(float))); // packed data is much faster in Lua
+        if (returnCol.size()>0)
+            D.pushOutData(CScriptFunctionDataItem((char*)(&returnCol[0]),returnCol.size()));
+    }
     D.writeDataToStack(p->stackID);
 }
 // --------------------------------------------------------------------------------------
@@ -3579,60 +3608,59 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     // Register the new Lua commands:
 
     // Spherical vision sensor:
-    simRegisterScriptCallbackFunction(LUA_HANDLESPHERICAL_COMMAND_PLUGIN,strConCat("number result=",LUA_HANDLESPHERICAL_COMMAND,"(number passiveVisionSensorHandleForRGB,table_6 activeVisionSensorHandles,\nnumber horizontalAngle,number verticalAngle,number passiveVisionSensorHandleForDepth=-1)"),LUA_HANDLESPHERICAL_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLESPHERICAL_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLESPHERICAL_COMMAND,"(int passiveVisionSensorHandleForRGB,table[6] activeVisionSensorHandles,\nfloat horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth=-1)"),LUA_HANDLESPHERICAL_CALLBACK);
 
     // Anaglyph sensor:
-    simRegisterScriptCallbackFunction(LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN,strConCat("number result=",LUA_HANDLEANAGLYPHSTEREO_COMMAND,"(number passiveVisionSensorHandle,table_2 activeVisionSensorHandles,table_6 leftAndRightColors=nil)"),LUA_HANDLEANAGLYPHSTEREO_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLEANAGLYPHSTEREO_COMMAND,"(int passiveVisionSensorHandle,table[2] activeVisionSensorHandles,table[6] leftAndRightColors=nil)"),LUA_HANDLEANAGLYPHSTEREO_CALLBACK);
 
 
     // HDL-64E:
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("number velodyneHandle=",LUA_CREATEVELODYNEHDL64E_COMMAND,"(table_4 visionSensorHandles,number frequency,number options=0,number pointSize=2,table_2 coloring_closeFarDist={1,5},number displayScalingFactor=1)"),LUA_CREATEVELODYNEHDL64E_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("number result=",LUA_DESTROYVELODYNEHDL64E_COMMAND,"(number velodyneHandle)"),LUA_DESTROYVELODYNEHDL64E_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("table points=",LUA_HANDLEVELODYNEHDL64E_COMMAND,"(number velodyneHandle,number dt)"),LUA_HANDLEVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEHDL64E_COMMAND,"(table[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,table[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEHDL64E_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("table points=",LUA_HANDLEVELODYNEHDL64E_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEHDL64E_CALLBACK);
 
-    // VPL-16:
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("number velodyneHandle=",LUA_CREATEVELODYNEVPL16_COMMAND,"(table_4 visionSensorHandles,number frequency,number options=0,number pointSize=2,table_2 coloring_closeFarDist={1,5},number displayScalingFactor=1)"),LUA_CREATEVELODYNEVPL16_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN,strConCat("number result=",LUA_DESTROYVELODYNEVPL16_COMMAND,"(number velodyneHandle)"),LUA_DESTROYVELODYNEVPL16_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("table points=",LUA_HANDLEVELODYNEVPL16_COMMAND,"(number velodyneHandle,number dt)"),LUA_HANDLEVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEVPL16_COMMAND,"(table[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,table[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEVPL16_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("table points=",LUA_HANDLEVELODYNEVPL16_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEVPL16_CALLBACK);
 
     // basic vision sensor processing:
-    simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORIMGTOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SENSORIMGTOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORIMG_COMMAND,"(number visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"(number visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER1_COMMAND,"(number visionSensorHandle)"),LUA_WORKIMGTOBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER2_COMMAND,"(number visionSensorHandle)"),LUA_WORKIMGTOBUFFER2_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SWAPBUFFERS_COMMAND_PLUGIN,strConCat("",LUA_SWAPBUFFERS_COMMAND,"(number visionSensorHandle)"),LUA_SWAPBUFFERS_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BUFFER1TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_BUFFER1TOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_BUFFER1TOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BUFFER2TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_BUFFER2TOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_BUFFER2TOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SWAPWORKIMGWITHBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_SWAPWORKIMGWITHBUFFER1_COMMAND,"(number visionSensorHandle)"),LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_ADDWORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_ADDWORKIMGTOBUFFER1_COMMAND,"(number visionSensorHandle)"),LUA_ADDWORKIMGTOBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND,"(number visionSensorHandle)"),LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_ADDBUFFER1TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ADDBUFFER1TOWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_ADDBUFFER1TOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND,"(number visionSensorHandle)"),LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HORIZONTALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_HORIZONTALFLIPWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_HORIZONTALFLIPWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_VERTICALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_VERTICALFLIPWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_VERTICALFLIPWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_UNIFORMIMGTOWORKIMG_COMMAND,"(number visionSensorHandle,table_3 color)"),LUA_UNIFORMIMGTOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_NORMALIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_NORMALIZEWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_NORMALIZEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_COLORSEGMENTATIONONWORKIMG_COMMAND,"(number visionSensorHandle,number maxColorColorDistance)"),LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_INTENSITYSCALEONWORKIMG_COMMAND,"(number visionSensorHandle,number start,number end,bool greyScale)"),LUA_INTENSITYSCALEONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SELECTIVECOLORONONWORKIMG_COMMAND,"(number visionSensorHandle,table_3 color,table_3 colorTolerance,bool rgb,bool keep,bool removedPartToBuffer1)"),LUA_SELECTIVECOLORONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SCALEANDOFFSETWORKIMG_COMMAND,"(number visionSensorHandle,table_3 preOffset,table_3 scaling,table_3 postOffset,bool rgb)"),LUA_SCALEANDOFFSETWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BINARYWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,table packedDataPacket=",LUA_BINARYWORKIMG_COMMAND,"(number visionSensorHandle,number threshold,number oneProportion,number oneTol,\nnumber xCenter,number xCenterTol,number yCenter,number yCenterTol,number orient,number orientTol,number roundness,bool enableTrigger,table_3 overlayColor={1.0,0.0,1.0})"),LUA_BINARYWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,table packedDataPacket=",LUA_BLOBDETECTIONONWORKIMG_COMMAND,"(number visionSensorHandle,number threshold,number minBlobSize,bool modifyWorkImage,table_3 overlayColor={1.0,0.0,1.0})"),LUA_BLOBDETECTIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SHARPENWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHARPENWORKIMG_COMMAND,"(number visionSensorHandle)"),LUA_SHARPENWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_EDGEDETECTIONONWORKIMG_COMMAND,"(number visionSensorHandle,number threshold)"),LUA_EDGEDETECTIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SHIFTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHIFTWORKIMG_COMMAND,"(number visionSensorHandle,table_2 shift,bool wrapAround)"),LUA_SHIFTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_CIRCULARCUTWORKIMG_COMMAND,"(number visionSensorHandle,number radius,bool copyToBuffer1)"),LUA_CIRCULARCUTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_RESIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RESIZEWORKIMG_COMMAND,"(number visionSensorHandle,table_2 scaling)"),LUA_RESIZEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_ROTATEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ROTATEWORKIMG_COMMAND,"(number visionSensorHandle,number rotationAngle)"),LUA_ROTATEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX3X3ONWORKIMG_COMMAND,"(number visionSensorHandle,number passes,number multiplied,table_9 matrix=nil)"),LUA_MATRIX3X3ONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX5X5ONWORKIMG_COMMAND,"(number visionSensorHandle,number passes,number multiplied,table_25 matrix=nil)"),LUA_MATRIX5X5ONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RECTANGULARCUTWORKIMG_COMMAND,"(number visionSensorHandle,table_2 sizes,bool copyToBuffer1)"),LUA_RECTANGULARCUTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,table packedDataPacket=",LUA_COORDINATESFROMWORKIMG_COMMAND,"(number visionSensorHandle,table_2 xyPointCount,bool evenlySpacedInAngularSpace)"),LUA_COORDINATESFROMWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,table packedDataPacket=",LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"(number visionSensorHandle,number threshold)"),LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,table packedDataPacket=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(number visionSensorHandle,table_2 xyPointCount,number vAngle)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORIMGTOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SENSORIMGTOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORIMG_COMMAND,"(int visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"(int visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_WORKIMGTOBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER2_COMMAND,"(int visionSensorHandle)"),LUA_WORKIMGTOBUFFER2_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SWAPBUFFERS_COMMAND_PLUGIN,strConCat("",LUA_SWAPBUFFERS_COMMAND,"(int visionSensorHandle)"),LUA_SWAPBUFFERS_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BUFFER1TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_BUFFER1TOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_BUFFER1TOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BUFFER2TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_BUFFER2TOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_BUFFER2TOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SWAPWORKIMGWITHBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_SWAPWORKIMGWITHBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_ADDWORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_ADDWORKIMGTOBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_ADDWORKIMGTOBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_ADDBUFFER1TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ADDBUFFER1TOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_ADDBUFFER1TOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HORIZONTALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_HORIZONTALFLIPWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_HORIZONTALFLIPWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_VERTICALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_VERTICALFLIPWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_VERTICALFLIPWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_UNIFORMIMGTOWORKIMG_COMMAND,"(int visionSensorHandle,table[3] color)"),LUA_UNIFORMIMGTOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_NORMALIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_NORMALIZEWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_NORMALIZEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_COLORSEGMENTATIONONWORKIMG_COMMAND,"(int visionSensorHandle,float maxColorColorDistance)"),LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_INTENSITYSCALEONWORKIMG_COMMAND,"(int visionSensorHandle,float start,float end,bool greyScale)"),LUA_INTENSITYSCALEONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SELECTIVECOLORONONWORKIMG_COMMAND,"(int visionSensorHandle,table[3] color,table[3] colorTolerance,bool rgb,bool keep,bool removedPartToBuffer1)"),LUA_SELECTIVECOLORONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SCALEANDOFFSETWORKIMG_COMMAND,"(int visionSensorHandle,table[3] preOffset,table[3] scaling,table[3] postOffset,bool rgb)"),LUA_SCALEANDOFFSETWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BINARYWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BINARYWORKIMG_COMMAND,"(int visionSensorHandle,float threshold,float oneProportion,float oneTol,\nfloat xCenter,float xCenterTol,float yCenter,float yCenterTol,float orient,float orientTol,float roundness,bool enableTrigger,table[3] overlayColor={1.0,0.0,1.0})"),LUA_BINARYWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BLOBDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold,float minBlobSize,bool modifyWorkImage,table[3] overlayColor={1.0,0.0,1.0})"),LUA_BLOBDETECTIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SHARPENWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHARPENWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SHARPENWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_EDGEDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_EDGEDETECTIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SHIFTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHIFTWORKIMG_COMMAND,"(int visionSensorHandle,table[2] shift,bool wrapAround)"),LUA_SHIFTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_CIRCULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,float radius,bool copyToBuffer1)"),LUA_CIRCULARCUTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_RESIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RESIZEWORKIMG_COMMAND,"(int visionSensorHandle,table[2] scaling)"),LUA_RESIZEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_ROTATEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ROTATEWORKIMG_COMMAND,"(int visionSensorHandle,float rotationAngle)"),LUA_ROTATEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX3X3ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,table[9] matrix=nil)"),LUA_MATRIX3X3ONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX5X5ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,table[25] matrix=nil)"),LUA_MATRIX5X5ONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RECTANGULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,table[2] sizes,bool copyToBuffer1)"),LUA_RECTANGULARCUTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_COORDINATESFROMWORKIMG_COMMAND,"(int visionSensorHandle,table[2] xyPointCount,bool evenlySpacedInAngularSpace,bool returnColorData=false)"),LUA_COORDINATESFROMWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(int visionSensorHandle,table[2] xyPointCount,float vAngle)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
 
 
     // Following for backward compatibility:
