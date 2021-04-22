@@ -77,9 +77,10 @@ bool CVisionVelodyneHDL64E::doAllObjectsExistAndAreVisionSensors()
     return(true);
 }
 
-bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsPts)
+bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsPts,std::vector<unsigned char>& retCols)
 {
     pts.clear();
+    retCols.clear();
     bool retVal=true;
     if (doAllObjectsExistAndAreVisionSensors()&&areVisionSensorsExplicitelyHandled())
     {
@@ -137,13 +138,23 @@ bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsP
                         int off=dataSize[1];
                         if (dataSize[2]>1)
                         {
+                            int collOff=off+dataSize[2];
+                            if ( (dataSize[0]<=2)||((dataSize[3])/3<(dataSize[2]-2)/16) )
+                                collOff=0;
                             int ptsX=int(data[off+0]+0.5f);
                             int ptsY=int(data[off+1]+0.5f);
                             off+=2;
                             unsigned char col[3];
+                            unsigned char dcol[3];
                             for (int j=0;j<ptsX*ptsY;j++)
                             {
                                 float p[3]={data[off+4*j+0],data[off+4*j+1],data[off+4*j+2]};
+                                if (collOff!=0)
+                                {
+                                    col[0]=((unsigned char*)data)[4*collOff+3*j+0];
+                                    col[1]=((unsigned char*)data)[4*collOff+3*j+1];
+                                    col[2]=((unsigned char*)data)[4*collOff+3*j+2];
+                                }
                                 float rr=p[0]*p[0]+p[1]*p[1]+p[2]*p[2];
                                 if (rr<RR)
                                 {
@@ -168,6 +179,12 @@ bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsP
                                             pts.push_back(0.5f*PI_VAL-atan2(p[1],sqrt(p[0]*p[0]+p[2]*p[2])));
                                             pts.push_back(r);
                                         }
+                                        if (collOff!=0)
+                                        {
+                                            retCols.push_back(col[0]);
+                                            retCols.push_back(col[1]);
+                                            retCols.push_back(col[2]);
+                                        }
                                         if (_displayPts)
                                         {   
                                             dp[0]*=_displayScalingFactor;
@@ -178,10 +195,10 @@ bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsP
                                             _displayPtsXyz.push_back(dp[0]);
                                             _displayPtsXyz.push_back(dp[1]);
                                             _displayPtsXyz.push_back(dp[2]);
-                                            _getColorFromIntensity(1.0f-((r-_coloringDistances[0])/(_coloringDistances[1]-_coloringDistances[0])),col);
-                                            _displayPtsCol.push_back(col[0]);
-                                            _displayPtsCol.push_back(col[1]);
-                                            _displayPtsCol.push_back(col[2]);
+                                             _getColorFromIntensity(1.0f-((r-_coloringDistances[0])/(_coloringDistances[1]-_coloringDistances[0])),dcol);
+                                            _displayPtsCol.push_back(dcol[0]);
+                                            _displayPtsCol.push_back(dcol[1]);
+                                            _displayPtsCol.push_back(dcol[2]);
                                         }
                                     }
                                 }

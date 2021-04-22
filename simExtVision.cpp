@@ -337,6 +337,7 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     std::vector<float> pts;
+    std::vector<unsigned char> cols;
     bool result=false;
     bool codedString=false;
     if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEHDL64E,inArgs_HANDLEVELODYNEHDL64E[0],LUA_HANDLEVELODYNEHDL64E_COMMAND))
@@ -353,7 +354,7 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
         float dt=inData->at(1).floatData[0];
         CVisionVelodyneHDL64E* obj=visionVelodyneHDL64EContainer->getObject(handle);
         if (obj!=NULL)
-            result=obj->handle(dt,pts,absCoords);
+            result=obj->handle(dt,pts,absCoords,cols);
         else
             simSetLastError(LUA_HANDLEVELODYNEHDL64E_COMMAND,"Invalid handle."); // output an error
     }
@@ -368,6 +369,8 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
         }
         else
             D.pushOutData(CScriptFunctionDataItem(pts));
+        if (cols.size()>0)
+            D.pushOutData(CScriptFunctionDataItem((char*)&cols[0],cols.size()));
     }
     D.writeDataToStack(p->stackID);
 }
@@ -496,6 +499,7 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     std::vector<float> pts;
+    std::vector<unsigned char> cols;
     bool result=false;
     bool codedString=false;
     if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEVPL16,inArgs_HANDLEVELODYNEVPL16[0],LUA_HANDLEVELODYNEVPL16_COMMAND))
@@ -512,7 +516,7 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
         float dt=inData->at(1).floatData[0];
         CVisionVelodyneVPL16* obj=visionVelodyneVPL16Container->getObject(handle);
         if (obj!=NULL)
-            result=obj->handle(dt,pts,absCoords);
+            result=obj->handle(dt,pts,absCoords,cols);
         else
             simSetLastError(LUA_HANDLEVELODYNEVPL16_COMMAND,"Invalid handle."); // output an error
     }
@@ -527,6 +531,8 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
         }
         else
             D.pushOutData(CScriptFunctionDataItem(pts));
+        if (cols.size()>0)
+            D.pushOutData(CScriptFunctionDataItem((char*)&cols[0],cols.size()));
     }
     D.writeDataToStack(p->stackID);
 }
@@ -3333,7 +3339,12 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         D.pushOutData(CScriptFunctionDataItem((char*)(&returnData[0]),returnData.size()*sizeof(float))); // packed data is much faster in Lua
         if (returnCol.size()>0)
+        {
+            returnCol.push_back(0); // return one more color, b/c CoppeliaSim assumes the data to be n*4 bytes in length, i.e. floats
+            returnCol.push_back(0);
+            returnCol.push_back(0);
             D.pushOutData(CScriptFunctionDataItem((char*)(&returnCol[0]),returnCol.size()));
+        }
     }
     D.writeDataToStack(p->stackID);
 }
@@ -3424,17 +3435,19 @@ void LUA_CHANGEDPIXELSONWORKIMG_CALLBACK(SScriptCallBack* p)
 #define LUA_VELODYNEDATAFROMWORKIMG_COMMAND "simVision.velodyneDataFromWorkImg"
 
 const int inArgs_VELODYNEDATAFROMWORKIMG[]={
-    3,
+    4,
     sim_script_arg_int32,0,
     sim_script_arg_int32|sim_lua_arg_table,2,
     sim_script_arg_float,0,
+    sim_script_arg_bool,0,
 };
 
 void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     std::vector<float> returnData;
-    if (D.readDataFromStack(p->stackID,inArgs_VELODYNEDATAFROMWORKIMG,inArgs_VELODYNEDATAFROMWORKIMG[0],LUA_VELODYNEDATAFROMWORKIMG_COMMAND))
+    std::vector<unsigned char> returnCol;
+    if (D.readDataFromStack(p->stackID,inArgs_VELODYNEDATAFROMWORKIMG,inArgs_VELODYNEDATAFROMWORKIMG[0]-1,LUA_VELODYNEDATAFROMWORKIMG_COMMAND))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int hhandle=inData->at(0).int32Data[0];
@@ -3448,9 +3461,14 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
         int xPtCnt=inData->at(1).int32Data[0];
         int yPtCnt=inData->at(1).int32Data[1];
         float vAngle=inData->at(2).floatData[0];
+        bool returnRgb=false;
+        if (inData->size()>=4)
+            returnRgb=inData->at(3).boolData[0];
         CVisionSensorData* imgData=getImgData(handle);
         if (imgData!=nullptr)
         {
+            if (imgData->buff1Img==nullptr)
+                returnRgb=false;
             C7Vector sensorTr;
             simGetObjectPosition(handle,-1,sensorTr.X.data);
             float q[4];
@@ -3525,6 +3543,12 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                             yRow=sizeY-1;
                         int indexP=3*(xRow+yRow*sizeX);
                         float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
+                        if (returnRgb)
+                        {
+                            returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
+                            returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+1]*255.1f));
+                            returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+2]*255.1f));
+                        }
                         float zDist=depthThresh+intensity*depthRange;
                         C3Vector v(tanXDistTxAlpha*xBeta*zDist,tanYDistTyAlpha*yBeta*zDist,zDist);
                         float l=v.getLength();
@@ -3558,7 +3582,16 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     if (returnData.size()>0)
+    {
         D.pushOutData(CScriptFunctionDataItem((char*)(&returnData[0]),returnData.size()*sizeof(float))); // packed data is much faster in Lua
+        if (returnCol.size()>0)
+        {
+            returnCol.push_back(0); // return one more color, b/c CoppeliaSim assumes the data to be n*4 bytes in length, i.e. floats
+            returnCol.push_back(0);
+            returnCol.push_back(0);
+            D.pushOutData(CScriptFunctionDataItem((char*)(&returnCol[0]),returnCol.size()));
+        }
+    }
     D.writeDataToStack(p->stackID);
 }
 // --------------------------------------------------------------------------------------
@@ -3617,11 +3650,11 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     // HDL-64E:
     simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEHDL64E_COMMAND,"(table[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,table[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEHDL64E_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEHDL64E_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEHDL64E_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("table points=",LUA_HANDLEVELODYNEHDL64E_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("table points,string colorData=",LUA_HANDLEVELODYNEHDL64E_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEHDL64E_CALLBACK);
 
     simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEVPL16_COMMAND,"(table[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,table[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEVPL16_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEVPL16_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEVPL16_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("table points=",LUA_HANDLEVELODYNEVPL16_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("table points,string colorData=",LUA_HANDLEVELODYNEVPL16_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEVPL16_CALLBACK);
 
     // basic vision sensor processing:
     simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORIMGTOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SENSORIMGTOWORKIMG_CALLBACK);
@@ -3660,7 +3693,7 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RECTANGULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,table[2] sizes,bool copyToBuffer1)"),LUA_RECTANGULARCUTWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_COORDINATESFROMWORKIMG_COMMAND,"(int visionSensorHandle,table[2] xyPointCount,bool evenlySpacedInAngularSpace,bool returnColorData=false)"),LUA_COORDINATESFROMWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(int visionSensorHandle,table[2] xyPointCount,float vAngle)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(int visionSensorHandle,table[2] xyPointCount,float vAngle,bool returnColorData=false)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
 
 
     // Following for backward compatibility:
