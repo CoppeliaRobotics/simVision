@@ -10,7 +10,8 @@ public:
     virtual ~CVisionTransfCont();
 
     int addObject(CVisionTransf* obj);
-    bool removeObject(int passiveVisionSensorHandle);
+    bool removeObjectFromPassiveSensorHandle(int passiveVisionSensorHandle);
+    bool removeObjectFromScriptHandle(int h);
     void removeInvalidObjects();
     void removeAll();
     CVisionTransf* getVisionTransfFromReferencePassiveVisionSensor(int passiveVisionSensorHandle);

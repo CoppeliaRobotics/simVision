@@ -5,18 +5,20 @@
 class CVisionVelodyneHDL64E  
 {
 public:
-    CVisionVelodyneHDL64E(const int visionSensorHandles[4],float frequency,int options,float pointSize,float _coloringDistances[2],float scalingFactor,int newPointCloudHandle);
+    CVisionVelodyneHDL64E(int scriptHandle,const int visionSensorHandles[4],float frequency,int options,float pointSize,float _coloringDistances[2],float scalingFactor,int newPointCloudHandle);
     virtual ~CVisionVelodyneHDL64E();
 
-    int getVelodyneHandle();
-    bool areVisionSensorsExplicitelyHandled();
-    bool doAllObjectsExistAndAreVisionSensors();
+    int getVelodyneHandle() const;
+    int getRelatedScriptHandle() const;
+    bool areVisionSensorsExplicitelyHandled() const;
+    bool doAllObjectsExistAndAreVisionSensors() const;
     bool handle(float dt,std::vector<float>& pts,bool getAbsPts,std::vector<unsigned char>& retCols);
 
 private:
     void _removePointsBetween(float lowAngle,float range);
     void _getColorFromIntensity(float intensity,unsigned char col[3]);
 
+    int _scriptHandle;
     int _visionSensorHandles[4];
     float _frequency;
     int _velodyneHandle;

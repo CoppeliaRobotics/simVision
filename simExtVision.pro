@@ -49,8 +49,11 @@ unix:!macx {
 
 SOURCES += \
     simExtVision.cpp \
+    visionCont.cpp \
     visionTransf.cpp \
     visionTransfCont.cpp \
+    visionRemap.cpp \
+    visionRemapCont.cpp \
     visionVelodyneHDL64E.cpp \
     visionVelodyneHDL64ECont.cpp \
     visionVelodyneVPL16.cpp \
@@ -70,8 +73,11 @@ SOURCES += \
 
 HEADERS +=\
     simExtVision.h \
+    visionCont.h \
     visionTransf.h \
     visionTransfCont.h \
+    visionRemap.h \
+    visionRemapCont.h \
     visionVelodyneHDL64E.h \
     visionVelodyneHDL64ECont.h \
     visionVelodyneVPL16.h \

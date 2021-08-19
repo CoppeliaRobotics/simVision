@@ -6,8 +6,9 @@
 
 int CVisionVelodyneVPL16::_nextVelodyneHandle=0;
 
-CVisionVelodyneVPL16::CVisionVelodyneVPL16(const int visionSensorHandles[4],float frequency,int options,float pointSize,float coloringDistances[2],float scalingFactor,int newPointCloudHandle)
+CVisionVelodyneVPL16::CVisionVelodyneVPL16(int scriptHandle,const int visionSensorHandles[4],float frequency,int options,float pointSize,float coloringDistances[2],float scalingFactor,int newPointCloudHandle)
 {
+    _scriptHandle=scriptHandle;
     for (int i=0;i<4;i++)
         _visionSensorHandles[i]=visionSensorHandles[i];
     _frequency=frequency;
@@ -34,12 +35,17 @@ CVisionVelodyneVPL16::~CVisionVelodyneVPL16()
         simRemovePointsFromPointCloud(_newPtCloudHandle,0,0,0,0.0,0);
 }
 
-int CVisionVelodyneVPL16::getVelodyneHandle()
+int CVisionVelodyneVPL16::getVelodyneHandle() const
 {
     return(_velodyneHandle);
 }
 
-bool CVisionVelodyneVPL16::areVisionSensorsExplicitelyHandled()
+int CVisionVelodyneVPL16::getRelatedScriptHandle() const
+{
+    return(_scriptHandle);
+}
+
+bool CVisionVelodyneVPL16::areVisionSensorsExplicitelyHandled() const
 {
     for (int i=0;i<4;i++)
     {
@@ -52,7 +58,7 @@ bool CVisionVelodyneVPL16::areVisionSensorsExplicitelyHandled()
     return(true);
 }
 
-bool CVisionVelodyneVPL16::doAllObjectsExistAndAreVisionSensors()
+bool CVisionVelodyneVPL16::doAllObjectsExistAndAreVisionSensors() const
 {
     for (int i=0;i<4;i++)
     {

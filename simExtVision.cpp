@@ -2,7 +2,9 @@
 #include "scriptFunctionData.h"
 #include "simLib.h"
 #include <iostream>
+#include "visionCont.h"
 #include "visionTransfCont.h"
+#include "visionRemapCont.h"
 #include "visionVelodyneHDL64ECont.h"
 #include "visionVelodyneVPL16Cont.h"
 #include "imageProcess.h"
@@ -17,16 +19,18 @@
         #include <shlwapi.h>
         #pragma comment(lib, "Shlwapi.lib")
     #endif
-#endif /* _WIN32 */
+#endif
 #if defined (__linux) || defined (__APPLE__)
     #include <unistd.h>
-#endif /* __linux || __APPLE__ */
+#endif
 
 #define CONCAT(x,y,z) x y z
 #define strConCat(x,y,z)    CONCAT(x,y,z)
 
 static LIBRARY simLib;
+static CVisionCont* visionContainer;
 static CVisionTransfCont* visionTransfContainer;
+static CVisionRemapCont* visionRemapContainer;
 static CVisionVelodyneHDL64ECont* visionVelodyneHDL64EContainer;
 static CVisionVelodyneVPL16Cont* visionVelodyneVPL16Container;
 
@@ -49,6 +53,88 @@ static CVisionVelodyneVPL16Cont* visionVelodyneVPL16Container;
 #define LUA_HANDLEVELODYNEVPL16_COMMANDOLD_PLUGIN "simExtVision_handleVelodyneVPL16@Vision"
 #define LUA_HANDLEVELODYNEVPL16_COMMANDOLD "simExtVision_handleVelodyneVPL16"
 
+
+// --------------------------------------------------------------------------------------
+// simVision.Distort
+// --------------------------------------------------------------------------------------
+#define LUA_DISTORT_COMMAND_PLUGIN "simVision.distort@Vision"
+#define LUA_DISTORT_COMMAND "simVision.distort"
+
+const int inArgs_DISTORT[]={
+    3,
+    sim_script_arg_int32,0,
+    sim_script_arg_int32|sim_script_arg_table,0,
+    sim_script_arg_float|sim_script_arg_table,0,
+};
+
+void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
+{
+    CScriptFunctionData D;
+    int result=-1;
+    if (D.readDataFromStack(p->stackID,inArgs_DISTORT,inArgs_DISTORT[0]-2,LUA_DISTORT_COMMAND)) // last 2 args are optional
+    {
+        std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
+        int visionSensorHandle=inData->at(0).int32Data[0];
+        if (simGetObjectType(visionSensorHandle)==sim_object_visionsensor_type)
+        {
+            int r[2];
+            simGetVisionSensorResolution(visionSensorHandle,r);
+            CVisionRemap* obj=nullptr;
+            if (inData->size()>=2)
+            {
+                int* pixelMap=nullptr;
+                if (inData->at(1).int32Data.size()==r[0]*r[1])
+                    pixelMap=&inData->at(1).int32Data[0];
+                float* depthScaling=nullptr;
+                bool depthOk=true;
+                if (inData->size()>=3)
+                {
+                    if (inData->at(2).floatData.size()==r[0]*r[1])
+                        depthScaling=&inData->at(2).floatData[0];
+                    else
+                        depthOk=false;
+                }
+                if ( (pixelMap!=nullptr)&&depthOk )
+                {
+                    obj=visionRemapContainer->getObjectFromSensorHandle(visionSensorHandle);
+                    if (obj!=nullptr)
+                    {
+                        if (!obj->isSame(p->scriptID,pixelMap,depthScaling))
+                        {
+                            visionRemapContainer->removeObjectFromSensorHandle(visionSensorHandle);
+                            obj=nullptr;
+                        }
+                        else
+                            simSetLastError(LUA_DISTORT_COMMAND,"warning@Mapping was already initialized, constantly handing over mapping arguments will slow down operation."); // output an error
+                    }
+                    if (obj==nullptr)
+                    {
+                        obj=new CVisionRemap(p->scriptID,visionSensorHandle,pixelMap,depthScaling);
+                        visionRemapContainer->addObject(obj);
+                    }
+                }
+                else
+                    simSetLastError(LUA_DISTORT_COMMAND,"Invalid argument(s)."); // output an error
+            }
+            else
+            {
+                obj=visionRemapContainer->getObjectFromSensorHandle(visionSensorHandle);
+                if (obj==nullptr)
+                    simSetLastError(LUA_DISTORT_COMMAND,"Mapping was not yet initialized."); // output an error
+            }
+            if (obj!=nullptr)
+            {
+                obj->handleObject();
+                result=1; // success
+            }
+        }
+        else
+            simSetLastError(LUA_DISTORT_COMMAND,"Invalid vision sensor handle."); // output an error
+    }
+    D.pushOutData(CScriptFunctionDataItem(result));
+    D.writeDataToStack(p->stackID);
+}
+// --------------------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------------------
 // simVision.handleSpherical
@@ -87,15 +173,15 @@ void LUA_HANDLESPHERICAL_CALLBACK(SScriptCallBack* p)
         CVisionTransf* obj=visionTransfContainer->getVisionTransfFromReferencePassiveVisionSensor(h);
         if (obj!=NULL)
         {
-            if (!obj->isSame(activeVisionSensorHandes,horizontalAngle,verticalAngle,passiveVisionSensorHandle,passiveVisionSensor2Handle))
+            if (!obj->isSame(p->scriptID,activeVisionSensorHandes,horizontalAngle,verticalAngle,passiveVisionSensorHandle,passiveVisionSensor2Handle))
             {
-                visionTransfContainer->removeObject(h);
+                visionTransfContainer->removeObjectFromPassiveSensorHandle(h);
                 obj=NULL;
             }
         }
         if (obj==NULL)
         {
-            obj=new CVisionTransf(passiveVisionSensorHandle,activeVisionSensorHandes,horizontalAngle,verticalAngle,passiveVisionSensor2Handle);
+            obj=new CVisionTransf(p->scriptID,passiveVisionSensorHandle,activeVisionSensorHandes,horizontalAngle,verticalAngle,passiveVisionSensor2Handle);
             visionTransfContainer->addObject(obj);
         }
 
@@ -123,7 +209,7 @@ void LUA_HANDLESPHERICAL_CALLBACK(SScriptCallBack* p)
             simSetLastError(LUA_HANDLESPHERICAL_COMMAND,"Invalid handles, or handles are not vision sensor handles."); // output an error
 
         if (result==-1)
-            visionTransfContainer->removeObject(h);
+            visionTransfContainer->removeObjectFromPassiveSensorHandle(h);
 
     }
     D.pushOutData(CScriptFunctionDataItem(result));
@@ -268,7 +354,7 @@ void LUA_CREATEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
         { // we have the optional 'pointCloudHandle' argument:
             pointCloudHandle=inData->at(6).int32Data[0];
         }
-        CVisionVelodyneHDL64E* obj=new CVisionVelodyneHDL64E(visionSensorHandes,frequency,options,pointSize,coloringDistances,scalingFactor,pointCloudHandle);
+        CVisionVelodyneHDL64E* obj=new CVisionVelodyneHDL64E(p->scriptID,visionSensorHandes,frequency,options,pointSize,coloringDistances,scalingFactor,pointCloudHandle);
         visionVelodyneHDL64EContainer->addObject(obj);
         if (obj->doAllObjectsExistAndAreVisionSensors())
         {
@@ -281,7 +367,7 @@ void LUA_CREATEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
             simSetLastError(LUA_CREATEVELODYNEHDL64E_COMMAND,"Invalid handles, or handles are not vision sensor handles."); // output an error
 
         if (velodyneHandle==-1)
-            visionVelodyneHDL64EContainer->removeObject(obj->getVelodyneHandle());
+            visionVelodyneHDL64EContainer->removeObjectFromSensorHandle(obj->getVelodyneHandle());
     }
     D.pushOutData(CScriptFunctionDataItem(velodyneHandle));
     D.writeDataToStack(p->stackID);
@@ -310,7 +396,7 @@ void LUA_DESTROYVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
         CVisionVelodyneHDL64E* obj=visionVelodyneHDL64EContainer->getObject(handle);
         if (obj!=NULL)
         {
-            visionVelodyneHDL64EContainer->removeObject(obj->getVelodyneHandle());
+            visionVelodyneHDL64EContainer->removeObjectFromSensorHandle(obj->getVelodyneHandle());
             result=1;
         }
         else
@@ -430,7 +516,7 @@ void LUA_CREATEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
         { // we have the optional 'pointCloudHandle' argument:
             pointCloudHandle=inData->at(6).int32Data[0];
         }
-        CVisionVelodyneVPL16* obj=new CVisionVelodyneVPL16(visionSensorHandes,frequency,options,pointSize,coloringDistances,scalingFactor,pointCloudHandle);
+        CVisionVelodyneVPL16* obj=new CVisionVelodyneVPL16(p->scriptID,visionSensorHandes,frequency,options,pointSize,coloringDistances,scalingFactor,pointCloudHandle);
         visionVelodyneVPL16Container->addObject(obj);
         if (obj->doAllObjectsExistAndAreVisionSensors())
         {
@@ -443,7 +529,7 @@ void LUA_CREATEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
             simSetLastError(LUA_CREATEVELODYNEVPL16_COMMAND,"Invalid handles, or handles are not vision sensor handles."); // output an error
 
         if (velodyneHandle==-1)
-            visionVelodyneVPL16Container->removeObject(obj->getVelodyneHandle());
+            visionVelodyneVPL16Container->removeObjectFromSensorHandle(obj->getVelodyneHandle());
     }
     D.pushOutData(CScriptFunctionDataItem(velodyneHandle));
     D.writeDataToStack(p->stackID);
@@ -472,7 +558,7 @@ void LUA_DESTROYVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
         CVisionVelodyneVPL16* obj=visionVelodyneVPL16Container->getObject(handle);
         if (obj!=NULL)
         {
-            visionVelodyneVPL16Container->removeObject(obj->getVelodyneHandle());
+            visionVelodyneVPL16Container->removeObjectFromSensorHandle(obj->getVelodyneHandle());
             result=1;
         }
         else
@@ -538,56 +624,6 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 }
 // --------------------------------------------------------------------------------------
 
-class CVisionSensorData
-{
-    public:
-    CVisionSensorData()
-    {
-        workImg=nullptr;
-        buff1Img=nullptr;
-        buff2Img=nullptr;
-    }
-    ~CVisionSensorData()
-    {
-        if (workImg!=nullptr)
-            delete[] workImg;
-        if (buff1Img!=nullptr)
-            delete[] buff1Img;
-        if (buff2Img!=nullptr)
-            delete[] buff2Img;
-    }
-    int resolution[2];
-    float* workImg;
-    float* buff1Img;
-    float* buff2Img;
-};
-
-std::map<int,CVisionSensorData*> _imgData;
-
-CVisionSensorData* getImgData(int handle)
-{
-    std::map<int,CVisionSensorData*>::iterator it=_imgData.find(handle);
-    if (it!=_imgData.end())
-        return(it->second);
-    return(nullptr);
-}
-
-void removeImgData(int handle)
-{
-    std::map<int,CVisionSensorData*>::iterator it=_imgData.find(handle);
-    if (it!=_imgData.end())
-    {
-        delete it->second;
-        _imgData.erase(it);
-    }
-}
-
-void setImgData(int handle,CVisionSensorData* imgData)
-{
-    removeImgData(handle);
-    _imgData[handle]=imgData;
-}
-
 int getVisionSensorHandle(int handle,int attachedObj)
 {
     if (handle==sim_handle_self)
@@ -618,13 +654,13 @@ void LUA_SENSORIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
         {
             int res[2];
             simGetVisionSensorResolution(handle,res);
-            CVisionSensorData* imgData=getImgData(handle);
+            CVisionSensorData* imgData=visionContainer->getImageObject(handle);
             if (imgData==nullptr)
             {
                 imgData=new CVisionSensorData();
                 imgData->resolution[0]=res[0];
                 imgData->resolution[1]=res[1];
-                setImgData(handle,imgData);
+                visionContainer->setImageObject(handle,p->scriptID,imgData);
             }
             if ( (imgData->resolution[0]!=res[0])||(imgData->resolution[1]!=res[1]) )
             {
@@ -683,13 +719,13 @@ void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
         {
             int res[2];
             simGetVisionSensorResolution(handle,res);
-            CVisionSensorData* imgData=getImgData(handle);
+            CVisionSensorData* imgData=visionContainer->getImageObject(handle);
             if (imgData==nullptr)
             {
                 imgData=new CVisionSensorData();
                 imgData->resolution[0]=res[0];
                 imgData->resolution[1]=res[1];
-                setImgData(handle,imgData);
+                visionContainer->setImageObject(handle,p->scriptID,imgData);
             }
             if ( (imgData->resolution[0]!=res[0])||(imgData->resolution[1]!=res[1]) )
             {
@@ -748,7 +784,7 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         bool removeImg=true;
         if ( (inData->size()>1)&&(inData->at(1).boolData.size()==1) )
             removeImg=inData->at(1).boolData[0];
@@ -761,7 +797,7 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
             else
                 simSetLastError(LUA_SENSORIMGTOWORKIMG_COMMAND,"Resolution mismatch.");
             if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr)&&removeImg )
-                removeImgData(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
+                visionContainer->removeImageObject(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
         }
         else
             simSetLastError(LUA_WORKIMGTOSENSORIMG_COMMAND,"Invalid handle or work image not initialized.");
@@ -790,7 +826,7 @@ void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         bool removeImg=true;
         if ( (inData->size()>1)&&(inData->at(1).boolData.size()==1) )
             removeImg=inData->at(1).boolData[0];
@@ -809,7 +845,7 @@ void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
             else
                 simSetLastError(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"Resolution mismatch.");
             if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr)&&removeImg )
-                removeImgData(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
+                visionContainer->removeImageObject(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
         }
         else
             simSetLastError(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"Invalid handle or work image not initialized.");
@@ -837,7 +873,7 @@ void LUA_WORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -871,7 +907,7 @@ void LUA_WORKIMGTOBUFFER2_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff2Img==nullptr)
@@ -905,7 +941,7 @@ void LUA_SWAPBUFFERS_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -942,7 +978,7 @@ void LUA_BUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -976,7 +1012,7 @@ void LUA_BUFFER2TOWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff2Img==nullptr)
@@ -1010,7 +1046,7 @@ void LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -1048,7 +1084,7 @@ void LUA_ADDWORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -1086,7 +1122,7 @@ void LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -1124,7 +1160,7 @@ void LUA_ADDBUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -1162,7 +1198,7 @@ void LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -1200,7 +1236,7 @@ void LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -1238,7 +1274,7 @@ void LUA_HORIZONTALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             float tmp;
@@ -1283,7 +1319,7 @@ void LUA_VERTICALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             float tmp;
@@ -1330,7 +1366,7 @@ void LUA_UNIFORMIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         float* p=&(inData->at(1).floatData[0]);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             for (int i=0;i<imgData->resolution[0]*imgData->resolution[1];i++)
@@ -1366,7 +1402,7 @@ void LUA_NORMALIZEWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int s=imgData->resolution[0]*imgData->resolution[1]*3;
@@ -1414,7 +1450,7 @@ void LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK(SScriptCallBack* p)
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         float p=inData->at(1).floatData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int s=imgData->resolution[0]*imgData->resolution[1];
@@ -1494,7 +1530,7 @@ void LUA_INTENSITYSCALEONWORKIMG_CALLBACK(SScriptCallBack* p)
         float start=inData->at(1).floatData[0];
         float end=inData->at(2).floatData[0];
         bool greyScale=inData->at(3).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             float b=start;
@@ -1637,7 +1673,7 @@ void LUA_SELECTIVECOLORONONWORKIMG_CALLBACK(SScriptCallBack* p)
         bool inRgbDim=inData->at(3).boolData[0];
         bool keep=inData->at(4).boolData[0];
         bool toBuffer1=inData->at(5).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (toBuffer1)
@@ -1773,7 +1809,7 @@ void LUA_SCALEANDOFFSETWORKIMG_CALLBACK(SScriptCallBack* p)
         float* pScale=&(inData->at(2).floatData)[0];
         float* pOff=&(inData->at(3).floatData)[0];
         bool inRgbDim=inData->at(4).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int s=imgData->resolution[0]*imgData->resolution[1];
@@ -1949,7 +1985,7 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
         float orientTol=inData->at(9).floatData[0];
         float roundV=inData->at(10).floatData[0];
         bool triggerEnabled=inData->at(11).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             float col[3]={1.0f,0.0f,1.0f};
@@ -2129,7 +2165,7 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
         float threshold=inData->at(1).floatData[0];
         float minBlobSize=inData->at(2).floatData[0];
         bool diffColor=inData->at(3).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             float col[3]={1.0f,0.0f,1.0f};
@@ -2483,7 +2519,7 @@ void LUA_SHARPENWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -2523,7 +2559,7 @@ void LUA_EDGEDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         float threshold=inData->at(1).floatData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -2582,7 +2618,7 @@ void LUA_SHIFTWORKIMG_CALLBACK(SScriptCallBack* p)
         float xShift=inData->at(1).floatData[0];
         float yShift=inData->at(1).floatData[1];
         float wrap=inData->at(2).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -2673,7 +2709,7 @@ void LUA_CIRCULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         float radius=inData->at(1).floatData[0];
         float copyToBuffer1=inData->at(2).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (copyToBuffer1)
@@ -2750,7 +2786,7 @@ void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         float xScale=inData->at(1).floatData[0];
         float yScale=inData->at(1).floatData[1];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -2830,7 +2866,7 @@ void LUA_ROTATEWORKIMG_CALLBACK(SScriptCallBack* p)
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         float rotAngle=inData->at(1).floatData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -2927,7 +2963,7 @@ void LUA_MATRIX3X3ONWORKIMG_CALLBACK(SScriptCallBack* p)
             for (size_t i=0;i<9;i++)
                 m[i]=inData->at(3).floatData[i]*multiplier;
         }
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -3001,7 +3037,7 @@ void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
             for (size_t i=0;i<25;i++)
                 m[i]=inData->at(3).floatData[i]*multiplier;
         }
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -3051,7 +3087,7 @@ void LUA_RECTANGULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
         float nsizeX=inData->at(1).floatData[0];
         float nsizeY=inData->at(1).floatData[1];
         float copyToBuffer1=inData->at(2).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (copyToBuffer1)
@@ -3141,7 +3177,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
         bool returnRgb=false;
         if (inData->size()>=4)
             returnRgb=inData->at(3).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -3371,7 +3407,7 @@ void LUA_CHANGEDPIXELSONWORKIMG_CALLBACK(SScriptCallBack* p)
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         float thresh=inData->at(1).floatData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
@@ -3464,7 +3500,7 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
         bool returnRgb=false;
         if (inData->size()>=4)
             returnRgb=inData->at(3).boolData[0];
-        CVisionSensorData* imgData=getImgData(handle);
+        CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
@@ -3596,10 +3632,8 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 }
 // --------------------------------------------------------------------------------------
 
-// This is the plugin start routine:
 SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
-{ // This is called just once, at the start of CoppeliaSim
-    // Dynamically load and bind CoppeliaSim functions:
+{
     char curDirAndFile[1024];
 #ifdef _WIN32
     #ifdef QT_COMPIL
@@ -3621,7 +3655,7 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     temp+="/libcoppeliaSim.so";
 #elif defined (__APPLE__)
     temp+="/libcoppeliaSim.dylib";
-#endif /* __linux || __APPLE__ */
+#endif
 
     simLib=loadSimLibrary(temp.c_str());
     if (simLib==NULL)
@@ -3691,6 +3725,7 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simRegisterScriptCallbackFunction(LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX3X3ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,table[9] matrix=nil)"),LUA_MATRIX3X3ONWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX5X5ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,table[25] matrix=nil)"),LUA_MATRIX5X5ONWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RECTANGULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,table[2] sizes,bool copyToBuffer1)"),LUA_RECTANGULARCUTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_DISTORT_COMMAND_PLUGIN,strConCat("",LUA_DISTORT_COMMAND,"(int visionSensorHandle,table[] pixelMap=nil,table[] depthScalings=nil)"),LUA_DISTORT_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_COORDINATESFROMWORKIMG_COMMAND,"(int visionSensorHandle,table[2] xyPointCount,bool evenlySpacedInAngularSpace,bool returnColorData=false)"),LUA_COORDINATESFROMWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(int visionSensorHandle,table[2] xyPointCount,float vAngle,bool returnColorData=false)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
@@ -3718,66 +3753,56 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simRegisterScriptVariable("simExtVision_handleVelodyne",LUA_HANDLEVELODYNEHDL64E_COMMAND,-1);
 
 
-
+    visionContainer = new CVisionCont();
     visionTransfContainer = new CVisionTransfCont();
+    visionRemapContainer = new CVisionRemapCont();
     visionVelodyneHDL64EContainer = new CVisionVelodyneHDL64ECont();
     visionVelodyneVPL16Container = new CVisionVelodyneVPL16Cont();
 
-    return(4);  // initialization went fine, we return the version number of this extension module (can be queried with simGetModuleName)
+    return(5);  // initialization went fine, we return the version number of this extension module (can be queried with simGetModuleName)
                 // Version 2 since 3.2.1
                 // Version 3 since 3.3.1
                 // Version 4 since 3.4.1
+                // Version 5 since 4.3.0
 }
 
-// This is the plugin end routine:
 SIM_DLLEXPORT void simEnd()
-{ // This is called just once, at the end of CoppeliaSim
-
-    delete visionTransfContainer;
-    delete visionVelodyneHDL64EContainer;
+{
     delete visionVelodyneVPL16Container;
+    delete visionVelodyneHDL64EContainer;
+    delete visionRemapContainer;
+    delete visionTransfContainer;
+    delete visionContainer;
 
     unloadSimLibrary(simLib); // release the library
 }
 
 // This is the plugin messaging routine (i.e. CoppeliaSim calls this function very often, with various messages):
 SIM_DLLEXPORT void* simMessage(int message,int* auxiliaryData,void* customData,int* replyData)
-{ // This is called quite often. Just watch out for messages/events you want to handle
-
-    // This function should not generate any error messages:
-    int errorModeSaved;
-    simGetIntegerParameter(sim_intparam_error_report_mode,&errorModeSaved);
-    simSetIntegerParameter(sim_intparam_error_report_mode,sim_api_errormessage_ignore);
-
-    void* retVal=NULL;
-
-    if ( (message==sim_message_eventcallback_lastinstancepass)||(message==sim_message_eventcallback_instanceswitch)||(message==sim_message_eventcallback_undoperformed)||(message==sim_message_eventcallback_redoperformed) )
-    {
-        for (std::map<int,CVisionSensorData*>::iterator it=_imgData.begin();it!=_imgData.end();it++)
-            delete it->second;
-        _imgData.clear();
-    }
-
+{
     if (message==sim_message_eventcallback_instancepass)
     {
         if (auxiliaryData[0]&1)
             visionTransfContainer->removeInvalidObjects();
 
+        /* removed on 19.08.2021, not needed
         for (std::map<int,CVisionSensorData*>::iterator it=_imgData.begin();it!=_imgData.end();it++)
         {
             if (simIsHandleValid(it->first,-1)==0)
                 removeImgData(it->first);
         }
+        */
     }
 
-    if (message==sim_message_eventcallback_simulationended)
-    { // Simulation just ended
-        visionTransfContainer->removeAll();
-        visionVelodyneHDL64EContainer->removeAll();
-        visionVelodyneVPL16Container->removeAll();
+    if (message==sim_message_eventcallback_scriptstatedestroyed)
+    {
+        visionContainer->removeImageObjectFromScriptHandle(auxiliaryData[0]);
+        visionTransfContainer->removeObjectFromScriptHandle(auxiliaryData[0]);
+        visionRemapContainer->removeObjectFromScriptHandle(auxiliaryData[0]);
+        visionVelodyneHDL64EContainer->removeObjectFromScriptHandle(auxiliaryData[0]);
+        visionVelodyneVPL16Container->removeObjectFromScriptHandle(auxiliaryData[0]);
     }
 
-    simSetIntegerParameter(sim_intparam_error_report_mode,errorModeSaved); // restore previous settings
-    return(retVal);
+    return(nullptr);
 }
 

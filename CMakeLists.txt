@@ -21,8 +21,11 @@ coppeliasim_add_plugin(
     LEGACY
     SOURCES
     simExtVision.cpp
+    visionCont.cpp
     visionTransf.cpp
     visionTransfCont.cpp
+    visionRemap.cpp
+    visionRemapCont.cpp
     visionVelodyneHDL64E.cpp
     visionVelodyneHDL64ECont.cpp
     visionVelodyneVPL16.cpp

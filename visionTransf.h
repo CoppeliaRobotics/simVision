@@ -5,20 +5,18 @@
 class CVisionTransf  
 {
 public:
-    CVisionTransf(int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth);
+    CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth);
     virtual ~CVisionTransf();
 
     bool isActiveVisionSensorResolutionCorrect();
-    bool areRGBAndDepthVisionSensorResolutionsCorrect();
-    bool areActiveVisionSensorsExplicitelyHandled();
-    bool doAllObjectsExistAndAreVisionSensors();
-
-    bool isSame(const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passive1,int passive2);
-
-    int getReferencePassiveVisionSensorHandle();
+    bool areRGBAndDepthVisionSensorResolutionsCorrect() const;
+    bool areActiveVisionSensorsExplicitelyHandled() const;
+    bool doAllObjectsExistAndAreVisionSensors() const;
+    bool isSame(int scriptHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passive1,int passive2) const;
+    int getReferencePassiveVisionSensorHandle() const;
+    int getRelatedScriptHandle() const;
 
     void disableSpecularLightComponent(bool d);
-
     void handleObject();
     void releaseActiveVisionSensorImages();
 
@@ -29,6 +27,7 @@ private:
     int _passiveVisionSensorHandle;
     int _passiveVisionSensorHandleForDepth;
 
+    int _scriptHandle;
     int _activeVisionSensorHandles[6];
     bool _usedActiveVisionSensors[6];
     float _horizontalAngle;
@@ -41,5 +40,6 @@ private:
     float* _passiveVisionSensorImage;
 
     int* _mapP;
+    float* _mapI;
     unsigned char* _mapV;
 };

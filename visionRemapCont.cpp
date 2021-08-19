@@ -1,26 +1,26 @@
-#include "visionVelodyneHDL64ECont.h"
+#include "visionRemapCont.h"
 #include "simLib.h"
 
-CVisionVelodyneHDL64ECont::CVisionVelodyneHDL64ECont()
+CVisionRemapCont::CVisionRemapCont()
 {
 }
 
-CVisionVelodyneHDL64ECont::~CVisionVelodyneHDL64ECont()
+CVisionRemapCont::~CVisionRemapCont()
 {
     removeAll();
 }
 
-int CVisionVelodyneHDL64ECont::addObject(CVisionVelodyneHDL64E* obj)
+int CVisionRemapCont::addObject(CVisionRemap* obj)
 {
     _allObjects.push_back(obj);
-    return(obj->getVelodyneHandle());
+    return(obj->getSensorHandle());
 }
 
-bool CVisionVelodyneHDL64ECont::removeObjectFromSensorHandle(int velodyneHandle)
+bool CVisionRemapCont::removeObjectFromSensorHandle(int h)
 {
     for (size_t i=0;i<_allObjects.size();i++)
     {
-        if (_allObjects[i]->getVelodyneHandle()==velodyneHandle)
+        if (_allObjects[i]->getSensorHandle()==h)
         {
             delete _allObjects[i];
             _allObjects.erase(_allObjects.begin()+i);
@@ -30,7 +30,7 @@ bool CVisionVelodyneHDL64ECont::removeObjectFromSensorHandle(int velodyneHandle)
     return(false);
 }
 
-bool CVisionVelodyneHDL64ECont::removeObjectFromScriptHandle(int h)
+bool CVisionRemapCont::removeObjectFromScriptHandle(int h)
 {
     for (size_t i=0;i<_allObjects.size();i++)
     {
@@ -44,18 +44,18 @@ bool CVisionVelodyneHDL64ECont::removeObjectFromScriptHandle(int h)
     return(false);
 }
 
-void CVisionVelodyneHDL64ECont::removeAll()
+void CVisionRemapCont::removeAll()
 {
     for (size_t i=0;i<_allObjects.size();i++)
         delete _allObjects[i];
     _allObjects.clear();
 }
 
-CVisionVelodyneHDL64E* CVisionVelodyneHDL64ECont::getObject(int velodyneHandle)
+CVisionRemap* CVisionRemapCont::getObjectFromSensorHandle(int h)
 {
     for (size_t i=0;i<_allObjects.size();i++)
     {
-        if (_allObjects[i]->getVelodyneHandle()==velodyneHandle)
+        if (_allObjects[i]->getSensorHandle()==h)
             return(_allObjects[i]);
     }
     return(0);

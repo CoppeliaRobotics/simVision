@@ -4,8 +4,9 @@
 
 #define PI_VAL (3.14159265f)
 
-CVisionTransf::CVisionTransf(int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth)
+CVisionTransf::CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth)
 {
+    _scriptHandle=scriptHandle;
     _passiveVisionSensorHandle=passiveVisionSensorHandle;
     _passiveVisionSensorHandleForDepth=passiveVisionSensorHandleForDepth;
     _referencePassiveVisionSensorHandle=_passiveVisionSensorHandle;
@@ -38,6 +39,7 @@ CVisionTransf::CVisionTransf(int passiveVisionSensorHandle,const int activeVisio
     _passiveVisionSensorImage=new float[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]*3];
 
     _mapP=new int[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]];
+    _mapI=new float[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]];
     _mapV=new unsigned char[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]];
 
     _calculateMapping();
@@ -48,8 +50,14 @@ CVisionTransf::~CVisionTransf()
     releaseActiveVisionSensorImages();
     delete[] _passiveVisionSensorImage;
     delete[] _mapP;
+    delete[] _mapI;
     delete[] _mapV;
     disableSpecularLightComponent(false);
+}
+
+int CVisionTransf::getRelatedScriptHandle() const
+{
+    return(_scriptHandle);
 }
 
 bool CVisionTransf::isActiveVisionSensorResolutionCorrect()
@@ -69,7 +77,7 @@ bool CVisionTransf::isActiveVisionSensorResolutionCorrect()
     return(_activeVisionSensorResolutionXY!=-1);
 }
 
-bool CVisionTransf::areRGBAndDepthVisionSensorResolutionsCorrect()
+bool CVisionTransf::areRGBAndDepthVisionSensorResolutionsCorrect() const
 {
     if (_passiveVisionSensorHandle!=-1)
     {
@@ -90,7 +98,7 @@ bool CVisionTransf::areRGBAndDepthVisionSensorResolutionsCorrect()
     return(true);
 }
 
-bool CVisionTransf::areActiveVisionSensorsExplicitelyHandled()
+bool CVisionTransf::areActiveVisionSensorsExplicitelyHandled() const
 {
     for (int i=0;i<6;i++)
     {
@@ -103,7 +111,7 @@ bool CVisionTransf::areActiveVisionSensorsExplicitelyHandled()
     return(true);
 }
 
-bool CVisionTransf::doAllObjectsExistAndAreVisionSensors()
+bool CVisionTransf::doAllObjectsExistAndAreVisionSensors() const
 {
     if (_passiveVisionSensorHandle!=-1)
     {
@@ -123,8 +131,10 @@ bool CVisionTransf::doAllObjectsExistAndAreVisionSensors()
     return(true);
 }
 
-bool CVisionTransf::isSame(const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passive1,int passive2)
+bool CVisionTransf::isSame(int scriptHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passive1,int passive2) const
 {
+    if (scriptHandle!=_scriptHandle)
+        return(false);
     if (horizontalAngle!=_horizontalAngle)
         return(false);
     if (verticalAngle!=_verticalAngle)
@@ -145,7 +155,7 @@ bool CVisionTransf::isSame(const int activeVisionSensorHandles[6],float horizont
     return(true);
 }
 
-int CVisionTransf::getReferencePassiveVisionSensorHandle()
+int CVisionTransf::getReferencePassiveVisionSensorHandle() const
 {
     return(_referencePassiveVisionSensorHandle);
 }
@@ -182,7 +192,7 @@ void CVisionTransf::handleObject()
         for (int i=0;i<ptCnt;i++)
         {
             c=3*i;
-            p=_mapP[i];
+            p=3*_mapP[i];
             v=_mapV[i];
             _passiveVisionSensorImage[c+0]=_activeVisionSensorImages[v][p+0];
             _passiveVisionSensorImage[c+1]=_activeVisionSensorImages[v][p+1];
@@ -195,6 +205,11 @@ void CVisionTransf::handleObject()
     // For the depth part:
     if (_passiveVisionSensorHandleForDepth!=-1)
     {
+        float np,fp;
+        simGetObjectFloatParameter(_activeVisionSensorHandles[0],sim_visionfloatparam_near_clipping,&np);
+        simGetObjectFloatParameter(_activeVisionSensorHandles[0],sim_visionfloatparam_far_clipping,&fp);
+        float fmn=fp-np;
+
         for (int i=0;i<6;i++)
         {
             if (_usedActiveVisionSensors[i])
@@ -205,9 +220,15 @@ void CVisionTransf::handleObject()
         int p,v;
         for (int i=0;i<ptCnt;i++)
         {
-            p=_mapP[i]/3;
+            p=_mapP[i];
             v=_mapV[i];
-            _passiveVisionSensorImage[i]=_activeVisionSensorImages[v][p];
+
+            float d=(np+fmn*_activeVisionSensorImages[v][p])*_mapI[i];
+            d=(d-np)/fmn;
+            if (d>1.0f)
+                d=1.0f;
+
+            _passiveVisionSensorImage[i]=d;
         }
         simSetVisionSensorImage(_passiveVisionSensorHandleForDepth+sim_handleflag_greyscale,_passiveVisionSensorImage);
         releaseActiveVisionSensorImages();
@@ -322,8 +343,10 @@ void CVisionTransf::_calculateMapping()
             int pixelX=int((xl+1.0)*0.5f*float(_activeVisionSensorResolutionXY)-0.5f);
             int pixelY=int((yl+1.0)*0.5f*float(_activeVisionSensorResolutionXY)-0.5f);
 
-            _mapP[cnt]=3*(pixelX+pixelY*_activeVisionSensorResolutionXY);
+            _mapP[cnt]=pixelX+pixelY*_activeVisionSensorResolutionXY;
             _mapV[cnt]=imgIndex;
+            _mapI[cnt]=fabs(1.0f/(cos(atan(xl))*cos(atan(yl))));
+
             _usedActiveVisionSensors[imgIndex]=true;
         }
     }

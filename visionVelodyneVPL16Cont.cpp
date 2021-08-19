@@ -16,9 +16,9 @@ int CVisionVelodyneVPL16Cont::addObject(CVisionVelodyneVPL16* obj)
     return(obj->getVelodyneHandle());
 }
 
-bool CVisionVelodyneVPL16Cont::removeObject(int velodyneHandle)
+bool CVisionVelodyneVPL16Cont::removeObjectFromSensorHandle(int velodyneHandle)
 {
-    for (int i=0;i<int(_allObjects.size());i++)
+    for (size_t i=0;i<_allObjects.size();i++)
     {
         if (_allObjects[i]->getVelodyneHandle()==velodyneHandle)
         {
@@ -30,16 +30,30 @@ bool CVisionVelodyneVPL16Cont::removeObject(int velodyneHandle)
     return(false);
 }
 
+bool CVisionVelodyneVPL16Cont::removeObjectFromScriptHandle(int h)
+{
+    for (size_t i=0;i<_allObjects.size();i++)
+    {
+        if (_allObjects[i]->getRelatedScriptHandle()==h)
+        {
+            delete _allObjects[i];
+            _allObjects.erase(_allObjects.begin()+i);
+            return(true);
+        }
+    }
+    return(false);
+}
+
 void CVisionVelodyneVPL16Cont::removeAll()
 {
-    for (int i=0;i<int(_allObjects.size());i++)
+    for (size_t i=0;i<_allObjects.size();i++)
         delete _allObjects[i];
     _allObjects.clear();
 }
 
 CVisionVelodyneVPL16* CVisionVelodyneVPL16Cont::getObject(int velodyneHandle)
 {
-    for (int i=0;i<int(_allObjects.size());i++)
+    for (size_t i=0;i<_allObjects.size();i++)
     {
         if (_allObjects[i]->getVelodyneHandle()==velodyneHandle)
             return(_allObjects[i]);

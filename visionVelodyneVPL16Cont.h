@@ -11,7 +11,8 @@ public:
 
     int addObject(CVisionVelodyneVPL16* obj);
     CVisionVelodyneVPL16* getObject(int velodyneHandle);
-    bool removeObject(int velodyneHandle);
+    bool removeObjectFromSensorHandle(int velodyneHandle);
+    bool removeObjectFromScriptHandle(int h);
     void removeAll();
 
 private:
