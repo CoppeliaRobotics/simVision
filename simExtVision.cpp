@@ -105,7 +105,7 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
                             obj=nullptr;
                         }
                         else
-                            simSetLastError(LUA_DISTORT_COMMAND,"warning@Mapping was already initialized, constantly handing over mapping arguments will slow down operation."); // output an error
+                            simSetLastError(strConCat("warning@",LUA_DISTORT_COMMAND,""),"Mapping was already initialized, constantly handing over mapping arguments will slow down operation."); // output an error
                     }
                     if (obj==nullptr)
                     {
