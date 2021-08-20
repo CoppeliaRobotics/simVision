@@ -3782,10 +3782,10 @@ SIM_DLLEXPORT void* simMessage(int message,int* auxiliaryData,void* customData,i
 {
     if (message==sim_message_eventcallback_instancepass)
     {
+        /* removed on 19.08.2021, not needed
         if (auxiliaryData[0]&1)
             visionTransfContainer->removeInvalidObjects();
 
-        /* removed on 19.08.2021, not needed
         for (std::map<int,CVisionSensorData*>::iterator it=_imgData.begin();it!=_imgData.end();it++)
         {
             if (simIsHandleValid(it->first,-1)==0)
