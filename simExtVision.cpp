@@ -3670,8 +3670,6 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
         return(0); // Means error, CoppeliaSim will unload this plugin
     }
 
-    simRegisterScriptVariable("simVision","require('simExtVision')",0);
-
     // Register the new Lua commands:
 
     // Spherical vision sensor:
