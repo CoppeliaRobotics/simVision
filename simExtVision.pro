@@ -65,11 +65,9 @@ SOURCES += \
     ../simMath/MyMath.cpp \
     ../simMath/3Vector.cpp \
     ../simMath/4Vector.cpp \
-    ../simMath/6Vector.cpp \
     ../simMath/7Vector.cpp \
     ../simMath/3X3Matrix.cpp \
     ../simMath/4X4Matrix.cpp \
-    ../simMath/6X6Matrix.cpp \
 
 HEADERS +=\
     simExtVision.h \
@@ -90,11 +88,9 @@ HEADERS +=\
     ../simMath/mathDefines.h \
     ../simMath/3Vector.h \
     ../simMath/4Vector.h \
-    ../simMath/6Vector.h \
     ../simMath/7Vector.h \
     ../simMath/3X3Matrix.h \
     ../simMath/4X4Matrix.h \
-    ../simMath/6X6Matrix.h \
 
 unix:!symbian {
     maemo5 {
