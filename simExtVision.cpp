@@ -3267,7 +3267,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                             int indexP=3*(xRow+yRow*sizeX);
                             float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
                             float zDist=depthThresh+intensity*depthRange;
-                            v.set(tanXDistTxAlpha*xBeta*zDist,tanYDistTyAlpha*yBeta*zDist,zDist);
+                            v.setData(tanXDistTxAlpha*xBeta*zDist,tanYDistTyAlpha*yBeta*zDist,zDist);
                             if (returnRgb)
                             {
                                 returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
@@ -3281,7 +3281,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                             int indexP=3*(xRow+yRow*sizeX);
                             float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
                             float zDist=depthThresh+intensity*depthRange;
-                            v.set(tan(xAngle*0.5f)*xDist/(xAngle*0.5f)*zDist,tan(yAngle*0.5f)*yDist/(yAngle*0.5f)*zDist,zDist);
+                            v.setData(tan(xAngle*0.5f)*xDist/(xAngle*0.5f)*zDist,tan(yAngle*0.5f)*yDist/(yAngle*0.5f)*zDist,zDist);
                             if (returnRgb)
                             {
                                 returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
