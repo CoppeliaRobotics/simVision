@@ -1,24 +1,24 @@
 #include "visionRemap.h"
-#include "simLib.h"
+#include "vis.h"
 #include <math.h>
 
 #define PI_VAL (3.14159265f)
 
-CVisionRemap::CVisionRemap(int scriptHandle,int sensorHandle,const int* map,const float* scalings)
+CVisionRemap::CVisionRemap(int scriptHandle,int sensorHandle,const int* map,const double* scalings)
 {
     _scriptHandle=scriptHandle;
     _sensorHandle=sensorHandle;
     int r[2];
     simGetVisionSensorResolution(_sensorHandle,r);
     _pixelCount=r[0]*r[1];
-    _sensorImage=new float[_pixelCount*3];
+    _sensorImage=new double[_pixelCount*3];
     _mapP=new int[_pixelCount];
     for (int i=0;i<_pixelCount;i++)
         _mapP[i]=map[i];
     _mapI=nullptr;
     if (scalings!=nullptr)
     {
-        _mapI=new float[_pixelCount];
+        _mapI=new double[_pixelCount];
         for (int i=0;i<_pixelCount;i++)
             _mapI[i]=scalings[i];
     }
@@ -36,7 +36,7 @@ int CVisionRemap::getRelatedScriptHandle() const
     return(_scriptHandle);
 }
 
-bool CVisionRemap::isSame(int scriptHandle,const int* map,const float* scalings) const
+bool CVisionRemap::isSame(int scriptHandle,const int* map,const double* scalings) const
 {
     if (scriptHandle!=_scriptHandle)
         return(false);
@@ -74,14 +74,14 @@ int CVisionRemap::getSensorHandle() const
 
 void CVisionRemap::handleObject()
 {
-    float* img=simGetVisionSensorImage(_sensorHandle);
-    float* depth=nullptr;
-    float np,fp,fmn;
+    double* img=getVisionSensorImage(_sensorHandle);
+    double* depth=nullptr;
+    double np,fp,fmn;
     if (_mapI!=nullptr)
     {
-        simGetObjectFloatParameter(_sensorHandle,sim_visionfloatparam_near_clipping,&np);
-        simGetObjectFloatParameter(_sensorHandle,sim_visionfloatparam_far_clipping,&fp);
-        depth=simGetVisionSensorDepthBuffer(_sensorHandle);
+        simGetObjectFloatParam(_sensorHandle,sim_visionfloatparam_near_clipping,&np);
+        simGetObjectFloatParam(_sensorHandle,sim_visionfloatparam_far_clipping,&fp);
+        depth=getVisionSensorDepth(_sensorHandle);
         fmn=fp-np;
     }
     int c,p;
@@ -93,20 +93,20 @@ void CVisionRemap::handleObject()
         _sensorImage[c+1]=img[p+1];
         _sensorImage[c+2]=img[p+2];
     }
-    simSetVisionSensorImage(_sensorHandle,_sensorImage);
+    setVisionSensorImage(_sensorHandle,_sensorImage);
     simReleaseBuffer((char*)img);
     if (_mapI!=nullptr)
     {
         for (int i=0;i<_pixelCount;i++)
         {
             p=_mapP[i];
-            float d=(np+fmn*depth[p])*_mapI[i];
+            double d=(np+fmn*depth[p])*_mapI[i];
             d=(d-np)/fmn;
             if (d>1.0f)
                 d=1.0f;
             _sensorImage[i]=d;
         }
-        simSetVisionSensorImage(_sensorHandle|sim_handleflag_depthbuffer,_sensorImage);
+        setVisionSensorDepth(_sensorHandle,_sensorImage);
         simReleaseBuffer((char*)depth);
     }
 }

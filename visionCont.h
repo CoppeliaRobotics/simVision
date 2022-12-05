@@ -41,9 +41,9 @@ class CVisionSensorData
     }
 
     int resolution[2];
-    float* workImg;
-    float* buff1Img;
-    float* buff2Img;
+    double* workImg;
+    double* buff1Img;
+    double* buff2Img;
 
 private:
     int _sensorHandle;

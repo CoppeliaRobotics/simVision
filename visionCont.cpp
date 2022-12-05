@@ -1,5 +1,5 @@
 #include "visionCont.h"
-#include "simLib.h"
+#include "vis.h"
 
 CVisionCont::CVisionCont()
 {

@@ -6,7 +6,7 @@
 
 int CVisionVelodyneHDL64E::_nextVelodyneHandle=0;
 
-CVisionVelodyneHDL64E::CVisionVelodyneHDL64E(int scriptHandle,const int visionSensorHandles[4],float frequency,int options,float pointSize,float coloringDistances[2],float scalingFactor,int newPointCloudHandle)
+CVisionVelodyneHDL64E::CVisionVelodyneHDL64E(int scriptHandle,const int visionSensorHandles[4],double frequency,int options,double pointSize,double coloringDistances[2],double scalingFactor,int newPointCloudHandle)
 {
     _scriptHandle=scriptHandle;
     for (int i=0;i<4;i++)
@@ -69,10 +69,10 @@ bool CVisionVelodyneHDL64E::doAllObjectsExistAndAreVisionSensors() const
     {
         if (simGetObjectType(_newPtCloudHandle)!=sim_object_pointcloud_type)
             return(false);
-        float maxVoxelS;
+        double maxVoxelS;
         int maxPtsPerVoxel;
         int opt;
-        float ptS;
+        double ptS;
         simGetPointCloudOptions(_newPtCloudHandle,&maxVoxelS,&maxPtsPerVoxel,&opt,&ptS,0);
         opt|=16;
         opt-=16;
@@ -83,24 +83,24 @@ bool CVisionVelodyneHDL64E::doAllObjectsExistAndAreVisionSensors() const
     return(true);
 }
 
-bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsPts,std::vector<unsigned char>& retCols)
+bool CVisionVelodyneHDL64E::handle(double dt,std::vector<double>& pts,bool getAbsPts,std::vector<unsigned char>& retCols)
 {
     pts.clear();
     retCols.clear();
     bool retVal=true;
     if (doAllObjectsExistAndAreVisionSensors()&&areVisionSensorsExplicitelyHandled())
     {
-        float scanRange=_frequency*dt*2.0f*PI_VAL;
-        float startAnglePlusMinusPi=lastScanAngle-PI_VAL;
+        double scanRange=_frequency*dt*2.0f*PI_VAL;
+        double startAnglePlusMinusPi=lastScanAngle-PI_VAL;
         if (scanRange>=2.0f*PI_VAL)
             scanRange=2.0f*PI_VAL;
         if (_displayPts)
             _removePointsBetween(startAnglePlusMinusPi,scanRange);
 
-        float quadrantsLowLimits[8]={-0.25f*PI_VAL,0.25f*PI_VAL,0.75f*PI_VAL,-0.75f*PI_VAL};
+        double quadrantsLowLimits[8]={-0.25f*PI_VAL,0.25f*PI_VAL,0.75f*PI_VAL,-0.75f*PI_VAL};
 
-        float mainSensTr[12];
-        float mainSensTrInv[12];
+        double mainSensTr[12];
+        double mainSensTrInv[12];
         simGetObjectMatrix(_visionSensorHandles[0],-1,mainSensTr);
         simGetObjectMatrix(_visionSensorHandles[0],-1,mainSensTrInv);
         simInvertMatrix(mainSensTrInv);
@@ -110,16 +110,16 @@ bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsP
             simRemovePointsFromPointCloud(_newPtCloudHandle,0,0,0,0.0,0);
         _ptCloudHandle=-1;
         int existingDisplayPointsSize=int(_displayPtsXyz.size());
-        float m0[12];
+        double m0[12];
         simGetObjectMatrix(_visionSensorHandles[0],-1,m0);
         for (int i=0;i<4;i++)
         {
             bool doIt=false;
-            float dal=scanRange/8.0f;
-            float quadrantL=quadrantsLowLimits[i];
+            double dal=scanRange/8.0f;
+            double quadrantL=quadrantsLowLimits[i];
             for (int ml=0;ml<8;ml++)
             {
-                float ll=startAnglePlusMinusPi+dal*float(ml);
+                double ll=startAnglePlusMinusPi+dal*double(ml);
                 if (ll>=PI_VAL)
                     ll-=2.0f*PI_VAL;
                 if (   ((ll>=quadrantL)&&(ll<quadrantL+PI_VAL*0.5f)) || ((ll<=quadrantL)&&(ll<quadrantL-1.5f*PI_VAL))   )
@@ -130,14 +130,14 @@ bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsP
             }
             if (doIt)
             {
-                float* data;
+                double* data;
                 int* dataSize;
                 if (0<=simHandleVisionSensor(_visionSensorHandles[i],&data,&dataSize))
                 {
-                    float farClippingPlane;
-                    simGetObjectFloatParameter(_visionSensorHandles[i],1001,&farClippingPlane);
-                    float RR=(farClippingPlane*0.99f)*(farClippingPlane*0.99f);
-                    float m[12];
+                    double farClippingPlane;
+                    simGetObjectFloatParam(_visionSensorHandles[i],1001,&farClippingPlane);
+                    double RR=(farClippingPlane*0.99f)*(farClippingPlane*0.99f);
+                    double m[12];
                     simGetObjectMatrix(_visionSensorHandles[i],-1,m);
                     if (dataSize[0]>1)
                     {
@@ -154,23 +154,23 @@ bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsP
                             unsigned char dcol[3];
                             for (int j=0;j<ptsX*ptsY;j++)
                             {
-                                float p[3]={data[off+4*j+0],data[off+4*j+1],data[off+4*j+2]};
+                                double p[3]={data[off+4*j+0],data[off+4*j+1],data[off+4*j+2]};
                                 if (collOff!=0)
                                 {
                                     col[0]=((unsigned char*)data)[4*collOff+3*j+0];
                                     col[1]=((unsigned char*)data)[4*collOff+3*j+1];
                                     col[2]=((unsigned char*)data)[4*collOff+3*j+2];
                                 }
-                                float rr=p[0]*p[0]+p[1]*p[1]+p[2]*p[2];
+                                double rr=p[0]*p[0]+p[1]*p[1]+p[2]*p[2];
                                 if (rr<RR)
                                 {
-                                    float dp[3]={p[0],p[1],p[2]};
+                                    double dp[3]={p[0],p[1],p[2]};
                                     simTransformVector(m,p);
                                     simTransformVector(mainSensTrInv,p);
-                                    float a=atan2(p[0],p[2]);
+                                    double a=atan2(p[0],p[2]);
                                     if (   ((a>=startAnglePlusMinusPi)&&(a<startAnglePlusMinusPi+scanRange)) || ((a<=startAnglePlusMinusPi)&&(a<startAnglePlusMinusPi+scanRange-2.0f*PI_VAL))   )
                                     {
-                                        float r=sqrt(rr);
+                                        double r=sqrt(rr);
                                         if (_cartesianCoords)
                                         {
                                             if (getAbsPts)
@@ -255,10 +255,10 @@ bool CVisionVelodyneHDL64E::handle(float dt,std::vector<float>& pts,bool getAbsP
     return(retVal);
 }
 
-void CVisionVelodyneHDL64E::_removePointsBetween(float lowAngle,float range)
+void CVisionVelodyneHDL64E::_removePointsBetween(double lowAngle,double range)
 {
-    std::vector<float> displayPtsXyz(_displayPtsXyz);
-    std::vector<float> displayPtsA(_displayPtsA);
+    std::vector<double> displayPtsXyz(_displayPtsXyz);
+    std::vector<double> displayPtsA(_displayPtsA);
     std::vector<unsigned char> displayPtsCol(_displayPtsCol);
     _displayPtsXyz.clear();
     _displayPtsA.clear();
@@ -278,17 +278,17 @@ void CVisionVelodyneHDL64E::_removePointsBetween(float lowAngle,float range)
     }
 }
 
-void CVisionVelodyneHDL64E::_getColorFromIntensity(float intensity,unsigned char col[3])
+void CVisionVelodyneHDL64E::_getColorFromIntensity(double intensity,unsigned char col[3])
 {
     if (intensity>1.0f)
         intensity=1.0f;
     if (intensity<0.0f)
         intensity=0.0f;
-    const float c[12]={0.0f,0.0f,1.0f,1.0f,0.0f,1.0f,1.0f,0.0f,0.0f,1.0f,1.0f,0.0f};
+    const double c[12]={0.0f,0.0f,1.0f,1.0f,0.0f,1.0f,1.0f,0.0f,0.0f,1.0f,1.0f,0.0f};
     int d=int(intensity*3);
     if (d>2)
         d=2;
-    float r=(intensity-float(d)/3.0f)*3.0f;
+    double r=(intensity-double(d)/3.0f)*3.0f;
     col[0]=(unsigned char)(255.0f*(c[3*d+0]*(1.0f-r)+c[3*(d+1)+0]*r));
     col[1]=(unsigned char)(255.0f*(c[3*d+1]*(1.0f-r)+c[3*(d+1)+1]*r));
     col[2]=(unsigned char)(255.0f*(c[3*d+2]*(1.0f-r)+c[3*(d+1)+2]*r));

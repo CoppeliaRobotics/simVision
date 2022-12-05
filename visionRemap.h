@@ -5,10 +5,10 @@
 class CVisionRemap
 {
 public:
-    CVisionRemap(int scriptHandle,int sensorHandle,const int* map,const float* scalings);
+    CVisionRemap(int scriptHandle,int sensorHandle,const int* map,const double* scalings);
     virtual ~CVisionRemap();
 
-    bool isSame(int scriptHandle,const int* map,const float* scalings) const;
+    bool isSame(int scriptHandle,const int* map,const double* scalings) const;
     int getSensorHandle() const;
     int getRelatedScriptHandle() const;
     void handleObject();
@@ -18,7 +18,7 @@ private:
     int _scriptHandle;
     int _pixelCount;
 
-    float* _sensorImage;
+    double* _sensorImage;
     int* _mapP;
-    float* _mapI;
+    double* _mapI;
 };

@@ -1,6 +1,6 @@
 #include "simExtVision.h"
 #include "scriptFunctionData.h"
-#include "simLib.h"
+#include "vis.h"
 #include <iostream>
 #include "visionCont.h"
 #include "visionTransfCont.h"
@@ -64,7 +64,7 @@ const int inArgs_DISTORT[]={
     3,
     sim_script_arg_int32,0,
     sim_script_arg_int32|sim_script_arg_table,0,
-    sim_script_arg_float|sim_script_arg_table,0,
+    sim_script_arg_double|sim_script_arg_table,0,
 };
 
 void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
@@ -85,12 +85,12 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
                 int* pixelMap=nullptr;
                 if (inData->at(1).int32Data.size()==r[0]*r[1])
                     pixelMap=&inData->at(1).int32Data[0];
-                float* depthScaling=nullptr;
+                double* depthScaling=nullptr;
                 bool depthOk=true;
                 if (inData->size()>=3)
                 {
-                    if (inData->at(2).floatData.size()==r[0]*r[1])
-                        depthScaling=&inData->at(2).floatData[0];
+                    if (inData->at(2).doubleData.size()==r[0]*r[1])
+                        depthScaling=&inData->at(2).doubleData[0];
                     else
                         depthOk=false;
                 }
@@ -146,8 +146,8 @@ const int inArgs_HANDLESPHERICAL[]={
     5,
     sim_script_arg_int32,0,
     sim_script_arg_int32|sim_script_arg_table,6,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
     sim_script_arg_int32,0,
 };
 
@@ -162,8 +162,8 @@ void LUA_HANDLESPHERICAL_CALLBACK(SScriptCallBack* p)
         int activeVisionSensorHandes[6];
         for (int i=0;i<6;i++)
             activeVisionSensorHandes[i]=inData->at(1).int32Data[i];
-        float horizontalAngle=inData->at(2).floatData[0];
-        float verticalAngle=inData->at(3).floatData[0];
+        double horizontalAngle=inData->at(2).doubleData[0];
+        double verticalAngle=inData->at(3).doubleData[0];
         int passiveVisionSensor2Handle=-1;
         if (inData->size()>=5)
             passiveVisionSensor2Handle=inData->at(4).int32Data[0]; // for the depth map
@@ -227,7 +227,7 @@ const int inArgs_HANDLEANAGLYPHSTEREO[]={
     3,
     sim_script_arg_int32,0,
     sim_script_arg_int32|sim_script_arg_table,2,
-    sim_script_arg_float|sim_script_arg_table,6,
+    sim_script_arg_double|sim_script_arg_table,6,
 };
 
 void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
@@ -263,25 +263,25 @@ void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
                 int er=simGetExplicitHandling(rightSensorHandle);
                 if ((e&el&er&1)==1)
                 {
-                    float leftAndRightColors[6]={1.0f,0.0f,0.0f,0.0f,1.0f,1.0f}; // default
+                    double leftAndRightColors[6]={1.0f,0.0f,0.0f,0.0f,1.0f,1.0f}; // default
                     if (inData->size()>2)
                     { // we have the optional argument
                         for (int i=0;i<6;i++)
-                            leftAndRightColors[i]=inData->at(2).floatData[i];
+                            leftAndRightColors[i]=inData->at(2).doubleData[i];
                     }
                     simHandleVisionSensor(leftSensorHandle,NULL,NULL);
-                    float* leftImage=simGetVisionSensorImage(leftSensorHandle);
+                    double* leftImage=getVisionSensorImage(leftSensorHandle);
                     simHandleVisionSensor(rightSensorHandle,NULL,NULL);
-                    float* rightImage=simGetVisionSensorImage(rightSensorHandle);
+                    double* rightImage=getVisionSensorImage(rightSensorHandle);
                     for (int i=0;i<r[0]*r[1];i++)
                     {
-                        float il=(leftImage[3*i+0]+leftImage[3*i+1]+leftImage[3*i+2])/3.0f;
-                        float ir=(rightImage[3*i+0]+rightImage[3*i+1]+rightImage[3*i+2])/3.0f;
+                        double il=(leftImage[3*i+0]+leftImage[3*i+1]+leftImage[3*i+2])/3.0f;
+                        double ir=(rightImage[3*i+0]+rightImage[3*i+1]+rightImage[3*i+2])/3.0f;
                         leftImage[3*i+0]=il*leftAndRightColors[0]+ir*leftAndRightColors[3];
                         leftImage[3*i+1]=il*leftAndRightColors[1]+ir*leftAndRightColors[4];
                         leftImage[3*i+2]=il*leftAndRightColors[2]+ir*leftAndRightColors[5];
                     }
-                    simSetVisionSensorImage(passiveVisionSensorHande,leftImage);
+                    setVisionSensorImage(passiveVisionSensorHande,leftImage);
                     simReleaseBuffer((char*)leftImage);
                     simReleaseBuffer((char*)rightImage);
                     result=1;
@@ -309,11 +309,11 @@ void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
 const int inArgs_CREATEVELODYNEHDL64E[]={
     7,
     sim_script_arg_int32|sim_script_arg_table,4,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float|sim_script_arg_table,2,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double|sim_script_arg_table,2,
+    sim_script_arg_double,0,
     sim_script_arg_int32,0,
 };
 
@@ -325,13 +325,13 @@ void LUA_CREATEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int options=0;
-        float pointSize=2.0f;
-        float scalingFactor=1.0f;
-        float coloringDistances[2]={1,5};
+        double pointSize=2.0f;
+        double scalingFactor=1.0f;
+        double coloringDistances[2]={1,5};
         int visionSensorHandes[4];
         for (int i=0;i<4;i++)
             visionSensorHandes[i]=inData->at(0).int32Data[i];
-        float frequency=inData->at(1).floatData[0];
+        double frequency=inData->at(1).doubleData[0];
         int pointCloudHandle=-1;
         if (inData->size()>2)
         { // we have the optional 'options' argument:
@@ -339,16 +339,16 @@ void LUA_CREATEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
         }
         if (inData->size()>3)
         { // we have the optional 'pointSize' argument:
-            pointSize=inData->at(3).floatData[0];   
+            pointSize=inData->at(3).doubleData[0];
         }
         if (inData->size()>4)
         { // we have the optional 'coloringDistance' argument:
-            coloringDistances[0]=inData->at(4).floatData[0];
-            coloringDistances[1]=inData->at(4).floatData[1];
+            coloringDistances[0]=inData->at(4).doubleData[0];
+            coloringDistances[1]=inData->at(4).doubleData[1];
         }
         if (inData->size()>5)
         { // we have the optional 'displayScalingFactor' argument:
-            scalingFactor=inData->at(5).floatData[0];
+            scalingFactor=inData->at(5).doubleData[0];
         }
         if (inData->size()>6)
         { // we have the optional 'pointCloudHandle' argument:
@@ -416,13 +416,13 @@ void LUA_DESTROYVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 const int inArgs_HANDLEVELODYNEHDL64E[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
 };
 
 void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    std::vector<float> pts;
+    std::vector<double> pts;
     std::vector<unsigned char> cols;
     bool result=false;
     bool codedString=false;
@@ -437,7 +437,7 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
             absCoords=((handle&sim_handleflag_abscoords)!=0);
             handle=handle&0x000fffff;
         }
-        float dt=inData->at(1).floatData[0];
+        double dt=inData->at(1).doubleData[0];
         CVisionVelodyneHDL64E* obj=visionVelodyneHDL64EContainer->getObject(handle);
         if (obj!=NULL)
             result=obj->handle(dt,pts,absCoords,cols);
@@ -449,7 +449,13 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
         if (codedString)
         {
             if (pts.size()>0)
-                D.pushOutData(CScriptFunctionDataItem((char*)&pts[0],pts.size()*sizeof(float)));
+            {
+                std::vector<float> pp;
+                pp.resize(pts.size());
+                for (size_t i=0;i<pts.size();i++)
+                    pp[i]=(float)pts[i];
+                D.pushOutData(CScriptFunctionDataItem((char*)&pp[0],pts.size()*sizeof(float)));
+            }
             else
                 D.pushOutData(CScriptFunctionDataItem(nullptr,0));
         }
@@ -471,11 +477,11 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 const int inArgs_CREATEVELODYNEVPL16[]={
     7,
     sim_script_arg_int32|sim_script_arg_table,4,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float|sim_script_arg_table,2,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double|sim_script_arg_table,2,
+    sim_script_arg_double,0,
     sim_script_arg_int32,0,
 };
 
@@ -487,13 +493,13 @@ void LUA_CREATEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int options=0;
-        float pointSize=2.0f;
-        float scalingFactor=1.0f;
-        float coloringDistances[2]={1,5};
+        double pointSize=2.0f;
+        double scalingFactor=1.0f;
+        double coloringDistances[2]={1,5};
         int visionSensorHandes[4];
         for (int i=0;i<4;i++)
             visionSensorHandes[i]=inData->at(0).int32Data[i];
-        float frequency=inData->at(1).floatData[0];
+        double frequency=inData->at(1).doubleData[0];
         int pointCloudHandle=-1;
         if (inData->size()>2)
         { // we have the optional 'options' argument:
@@ -501,16 +507,16 @@ void LUA_CREATEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
         }
         if (inData->size()>3)
         { // we have the optional 'pointSize' argument:
-            pointSize=inData->at(3).floatData[0];   
+            pointSize=inData->at(3).doubleData[0];
         }
         if (inData->size()>4)
         { // we have the optional 'coloringDistance' argument:
-            coloringDistances[0]=inData->at(4).floatData[0];
-            coloringDistances[1]=inData->at(4).floatData[1];
+            coloringDistances[0]=inData->at(4).doubleData[0];
+            coloringDistances[1]=inData->at(4).doubleData[1];
         }
         if (inData->size()>5)
         { // we have the optional 'displayScalingFactor' argument:
-            scalingFactor=inData->at(5).floatData[0];
+            scalingFactor=inData->at(5).doubleData[0];
         }
         if (inData->size()>6)
         { // we have the optional 'pointCloudHandle' argument:
@@ -578,13 +584,13 @@ void LUA_DESTROYVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 const int inArgs_HANDLEVELODYNEVPL16[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
 };
 
 void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    std::vector<float> pts;
+    std::vector<double> pts;
     std::vector<unsigned char> cols;
     bool result=false;
     bool codedString=false;
@@ -599,7 +605,7 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
             absCoords=((handle&sim_handleflag_abscoords)!=0);
             handle=handle&0x000fffff;
         }
-        float dt=inData->at(1).floatData[0];
+        double dt=inData->at(1).doubleData[0];
         CVisionVelodyneVPL16* obj=visionVelodyneVPL16Container->getObject(handle);
         if (obj!=NULL)
             result=obj->handle(dt,pts,absCoords,cols);
@@ -611,7 +617,13 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
         if (codedString)
         {
             if (pts.size()>0)
-                D.pushOutData(CScriptFunctionDataItem((char*)&pts[0],pts.size()*sizeof(float)));
+            {
+                std::vector<float> pp;
+                pp.resize(pts.size());
+                for (size_t i=0;i<pts.size();i++)
+                    pp[i]=(float)pts[i];
+                D.pushOutData(CScriptFunctionDataItem((char*)&pp[0],pts.size()*sizeof(float)));
+            }
             else
                 D.pushOutData(CScriptFunctionDataItem(nullptr,0));
         }
@@ -649,7 +661,7 @@ void LUA_SENSORIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float* img=simGetVisionSensorImage(handle);
+        double* img=getVisionSensorImage(handle);
         if (img!=nullptr)
         {
             int res[2];
@@ -667,23 +679,23 @@ void LUA_SENSORIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
                 if (imgData->workImg!=nullptr)
                 {
                     delete[] imgData->workImg;
-                    imgData->workImg=new float[res[0]*res[1]*3];
+                    imgData->workImg=new double[res[0]*res[1]*3];
                 }
                 if (imgData->buff1Img!=nullptr)
                 {
                     delete[] imgData->buff1Img;
-                    imgData->buff1Img=new float[res[0]*res[1]*3];
+                    imgData->buff1Img=new double[res[0]*res[1]*3];
                 }
                 if (imgData->buff2Img!=nullptr)
                 {
                     delete[] imgData->buff2Img;
-                    imgData->buff2Img=new float[res[0]*res[1]*3];
+                    imgData->buff2Img=new double[res[0]*res[1]*3];
                 }
                 imgData->resolution[0]=res[0];
                 imgData->resolution[1]=res[1];
             }
             if (imgData->workImg==nullptr)
-                imgData->workImg=new float[res[0]*res[1]*3];
+                imgData->workImg=new double[res[0]*res[1]*3];
             for (size_t i=0;i<res[0]*res[1]*3;i++)
                 imgData->workImg[i]=img[i];
             simReleaseBuffer((char*)img);
@@ -714,7 +726,7 @@ void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float* img=simGetVisionSensorDepthBuffer(handle);
+        double* img=getVisionSensorDepth(handle);
         if (img!=nullptr)
         {
             int res[2];
@@ -732,23 +744,23 @@ void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
                 if (imgData->workImg!=nullptr)
                 {
                     delete[] imgData->workImg;
-                    imgData->workImg=new float[res[0]*res[1]*3];
+                    imgData->workImg=new double[res[0]*res[1]*3];
                 }
                 if (imgData->buff1Img!=nullptr)
                 {
                     delete[] imgData->buff1Img;
-                    imgData->buff1Img=new float[res[0]*res[1]*3];
+                    imgData->buff1Img=new double[res[0]*res[1]*3];
                 }
                 if (imgData->buff2Img!=nullptr)
                 {
                     delete[] imgData->buff2Img;
-                    imgData->buff2Img=new float[res[0]*res[1]*3];
+                    imgData->buff2Img=new double[res[0]*res[1]*3];
                 }
                 imgData->resolution[0]=res[0];
                 imgData->resolution[1]=res[1];
             }
             if (imgData->workImg==nullptr)
-                imgData->workImg=new float[res[0]*res[1]*3];
+                imgData->workImg=new double[res[0]*res[1]*3];
             for (size_t i=0;i<res[0]*res[1];i++)
             {
                 imgData->workImg[3*i+0]=img[i];
@@ -793,7 +805,7 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
             int res[2];
             simGetVisionSensorResolution(handle,res);
             if ( (imgData->resolution[0]==res[0])&&(imgData->resolution[1]==res[1]) )
-                simSetVisionSensorImage(handle,imgData->workImg);
+                setVisionSensorImage(handle,imgData->workImg);
             else
                 simSetLastError(LUA_SENSORIMGTOWORKIMG_COMMAND,"Resolution mismatch.");
             if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr)&&removeImg )
@@ -836,10 +848,10 @@ void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
             simGetVisionSensorResolution(handle,res);
             if ( (imgData->resolution[0]==res[0])&&(imgData->resolution[1]==res[1]) )
             {
-                float* tmpDepthMap=new float[res[0]*res[1]];
+                double* tmpDepthMap=new double[res[0]*res[1]];
                 for (size_t i=0;i<res[0]*res[1];i++)
                     tmpDepthMap[i]=(imgData->workImg[3*i+0]+imgData->workImg[3*i+1]+imgData->workImg[3*i+2])/3.0f;
-                simSetVisionSensorImage(handle|sim_handleflag_depthbuffer,tmpDepthMap);
+                setVisionSensorDepth(handle,tmpDepthMap);
                 delete[] tmpDepthMap;
             }
             else
@@ -877,7 +889,7 @@ void LUA_WORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
                 imgData->buff1Img[i]=imgData->workImg[i];
         }
@@ -911,7 +923,7 @@ void LUA_WORKIMGTOBUFFER2_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff2Img==nullptr)
-                imgData->buff2Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff2Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
                 imgData->buff2Img[i]=imgData->workImg[i];
         }
@@ -945,10 +957,10 @@ void LUA_SWAPBUFFERS_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             if (imgData->buff2Img==nullptr)
-                imgData->buff2Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
-            float* tmp=imgData->buff1Img;
+                imgData->buff2Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
+            double* tmp=imgData->buff1Img;
             imgData->buff1Img=imgData->buff2Img;
             imgData->buff2Img=tmp;
         }
@@ -982,7 +994,7 @@ void LUA_BUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
                 imgData->workImg[i]=imgData->buff1Img[i];
         }
@@ -1016,7 +1028,7 @@ void LUA_BUFFER2TOWORKIMG_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff2Img==nullptr)
-                imgData->buff2Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff2Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
                 imgData->workImg[i]=imgData->buff2Img[i];
         }
@@ -1050,10 +1062,10 @@ void LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
             {
-                float tmp=imgData->workImg[i];
+                double tmp=imgData->workImg[i];
                 imgData->workImg[i]=imgData->buff1Img[i];
                 imgData->buff1Img[i]=tmp;
             }
@@ -1088,7 +1100,7 @@ void LUA_ADDWORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
             {
                 imgData->buff1Img[i]+=imgData->workImg[i];
@@ -1126,7 +1138,7 @@ void LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
             {
                 imgData->buff1Img[i]-=imgData->workImg[i];
@@ -1164,7 +1176,7 @@ void LUA_ADDBUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
             {
                 imgData->workImg[i]+=imgData->buff1Img[i];
@@ -1202,7 +1214,7 @@ void LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
             {
                 imgData->workImg[i]-=imgData->buff1Img[i];
@@ -1240,7 +1252,7 @@ void LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             if (imgData->buff1Img==nullptr)
-                imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (size_t i=0;i<imgData->resolution[0]*imgData->resolution[1]*3;i++)
             {
                 imgData->workImg[i]*=imgData->buff1Img[i];
@@ -1277,7 +1289,7 @@ void LUA_HORIZONTALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
-            float tmp;
+            double tmp;
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
             for (int i=0;i<sizeX/2;i++)
@@ -1322,7 +1334,7 @@ void LUA_VERTICALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
-            float tmp;
+            double tmp;
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
             for (int i=0;i<sizeX;i++)
@@ -1355,7 +1367,7 @@ void LUA_VERTICALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_UNIFORMIMGTOWORKIMG[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float|sim_lua_arg_table,3,
+    sim_script_arg_double|sim_lua_arg_table,3,
 };
 
 void LUA_UNIFORMIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -1365,7 +1377,7 @@ void LUA_UNIFORMIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float* p=&(inData->at(1).floatData[0]);
+        double* p=&(inData->at(1).doubleData[0]);
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
@@ -1406,8 +1418,8 @@ void LUA_NORMALIZEWORKIMG_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             int s=imgData->resolution[0]*imgData->resolution[1]*3;
-            float maxCol=0.0f;
-            float minCol=1.0f;
+            double maxCol=0.0f;
+            double minCol=1.0f;
             for (int i=0;i<s;i++)
             {
                 if (imgData->workImg[i]>maxCol)
@@ -1417,7 +1429,7 @@ void LUA_NORMALIZEWORKIMG_CALLBACK(SScriptCallBack* p)
             }
             if (maxCol-minCol!=0.0f)
             {
-                float mul=1.0f/(maxCol-minCol);
+                double mul=1.0f/(maxCol-minCol);
                 for (int i=0;i<s;i++)
                     imgData->workImg[i]=(imgData->workImg[i]-minCol)*mul;
             }
@@ -1439,7 +1451,7 @@ void LUA_NORMALIZEWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_COLORSEGMENTATIONONWORKIMG[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
 };
 
 void LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -1449,22 +1461,22 @@ void LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float p=inData->at(1).floatData[0];
+        double p=inData->at(1).doubleData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int s=imgData->resolution[0]*imgData->resolution[1];
-            std::vector<float> goodColors;
-            float squaredDistance=p*p;
+            std::vector<double> goodColors;
+            double squaredDistance=p*p;
             for (int i=0;i<s;i++)
             {
                 bool found=false;
                 for (size_t j=0;j<goodColors.size()/3;j++)
                 {
-                    float r=imgData->workImg[3*i+0]-goodColors[3*j+0];
-                    float g=imgData->workImg[3*i+1]-goodColors[3*j+1];
-                    float b=imgData->workImg[3*i+2]-goodColors[3*j+2];
-                    float d=r*r+g*g+b*b;
+                    double r=imgData->workImg[3*i+0]-goodColors[3*j+0];
+                    double g=imgData->workImg[3*i+1]-goodColors[3*j+1];
+                    double b=imgData->workImg[3*i+2]-goodColors[3*j+2];
+                    double d=r*r+g*g+b*b;
                     if (d<squaredDistance)
                     {
                         found=true;
@@ -1490,17 +1502,17 @@ void LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK(SScriptCallBack* p)
 }
 // --------------------------------------------------------------------------------------
 
-void colorFromIntensity(float intensity,int colorTable,float col[3])
+void colorFromIntensity(double intensity,int colorTable,double col[3])
 {
     if (intensity>1.0f)
         intensity=1.0f;
     if (intensity<0.0f)
         intensity=0.0f;
-    const float c[12]={0.0f,0.0f,0.0f,0.0f,0.0f,1.0f,1.0f,0.0f,0.0f,1.0f,1.0f,0.0f};
+    const double c[12]={0.0f,0.0f,0.0f,0.0f,0.0f,1.0f,1.0f,0.0f,0.0f,1.0f,1.0f,0.0f};
     int d=int(intensity*3);
     if (d>2)
         d=2;
-    float r=(intensity-float(d)/3.0f)*3.0f;
+    double r=(intensity-double(d)/3.0f)*3.0f;
     col[0]=c[3*d+0]*(1.0f-r)+c[3*(d+1)+0]*r;
     col[1]=c[3*d+1]*(1.0f-r)+c[3*(d+1)+1]*r;
     col[2]=c[3*d+2]*(1.0f-r)+c[3*(d+1)+2]*r;
@@ -1515,8 +1527,8 @@ void colorFromIntensity(float intensity,int colorTable,float col[3])
 const int inArgs_INTENSITYSCALEONWORKIMG[]={
     4,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
     sim_script_arg_bool,0,
 };
 
@@ -1527,18 +1539,18 @@ void LUA_INTENSITYSCALEONWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float start=inData->at(1).floatData[0];
-        float end=inData->at(2).floatData[0];
+        double start=inData->at(1).doubleData[0];
+        double end=inData->at(2).doubleData[0];
         bool greyScale=inData->at(3).boolData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
-            float b=start;
-            float a=end-b;
+            double b=start;
+            double a=end-b;
             // intensity first transformed like: intensity=a*intensity+b
             int s=imgData->resolution[0]*imgData->resolution[1];
-            float intensity;
-            float col[3];
+            double intensity;
+            double col[3];
             for (int i=0;i<s;i++)
             {
                 intensity=(imgData->workImg[3*i+0]+imgData->workImg[3*i+1]+imgData->workImg[3*i+2])/3.0f;
@@ -1566,14 +1578,14 @@ void LUA_INTENSITYSCALEONWORKIMG_CALLBACK(SScriptCallBack* p)
 }
 // --------------------------------------------------------------------------------------
 
-void rgbToHsl(float rgb[3],float hsl[3])
+void rgbToHsl(double rgb[3],double hsl[3])
 {
-    float r=rgb[0];
-    float g=rgb[1];
-    float b=rgb[2];
-    float h,s,l,delta;
-    float cmax=std::max<float>(r,std::max<float>(g,b));
-    float cmin=std::min<float>(r,std::min<float>(g,b));
+    double r=rgb[0];
+    double g=rgb[1];
+    double b=rgb[2];
+    double h,s,l,delta;
+    double cmax=std::max<double>(r,std::max<double>(g,b));
+    double cmin=std::min<double>(r,std::min<double>(g,b));
     l=(cmax+cmin)/2.0f;
     if (cmax==cmin)
     {
@@ -1603,7 +1615,7 @@ void rgbToHsl(float rgb[3],float hsl[3])
     hsl[2]=l;
 }
 
-float hueToRgb(float m1,float m2,float h)
+double hueToRgb(double m1,double m2,double h)
 {
     if (h<0.0f)
         h=h+1.0f;
@@ -1618,12 +1630,12 @@ float hueToRgb(float m1,float m2,float h)
     return(m1);
 }
 
-void hslToRgb(float hsl[3],float rgb[3])
+void hslToRgb(double hsl[3],double rgb[3])
 {
-    float h=hsl[0];
-    float s=hsl[1];
-    float l=hsl[2];
-    float m1,m2;
+    double h=hsl[0];
+    double s=hsl[1];
+    double l=hsl[2];
+    double m1,m2;
 
     if (s==0.0f)
     {
@@ -1654,8 +1666,8 @@ void hslToRgb(float hsl[3],float rgb[3])
 const int inArgs_SELECTIVECOLORONONWORKIMG[]={
     6,
     sim_script_arg_int32,0,
-    sim_script_arg_float|sim_lua_arg_table,3,
-    sim_script_arg_float|sim_lua_arg_table,3,
+    sim_script_arg_double|sim_lua_arg_table,3,
+    sim_script_arg_double|sim_lua_arg_table,3,
     sim_script_arg_bool,0,
     sim_script_arg_bool,0,
     sim_script_arg_bool,0,
@@ -1668,8 +1680,8 @@ void LUA_SELECTIVECOLORONONWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float* pCol=&(inData->at(1).floatData)[0];
-        float* pTol=&(inData->at(2).floatData)[0];
+        double* pCol=&(inData->at(1).doubleData)[0];
+        double* pTol=&(inData->at(2).doubleData)[0];
         bool inRgbDim=inData->at(3).boolData[0];
         bool keep=inData->at(4).boolData[0];
         bool toBuffer1=inData->at(5).boolData[0];
@@ -1679,15 +1691,15 @@ void LUA_SELECTIVECOLORONONWORKIMG_CALLBACK(SScriptCallBack* p)
             if (toBuffer1)
             {
                 if (imgData->buff1Img==nullptr)
-                    imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                    imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             }
             int s=imgData->resolution[0]*imgData->resolution[1];
-            float col[3];
-            float rgb[3];
-            float lowTol[3]={pCol[0]-pTol[0],pCol[1]-pTol[1],pCol[2]-pTol[2]};
-            float upTol[3]={pCol[0]+pTol[0],pCol[1]+pTol[1],pCol[2]+pTol[2]};
-            float lowTolUpHue=1.0f+lowTol[0];
-            float upTolLowHue=upTol[0]-1.0f;
+            double col[3];
+            double rgb[3];
+            double lowTol[3]={pCol[0]-pTol[0],pCol[1]-pTol[1],pCol[2]-pTol[2]};
+            double upTol[3]={pCol[0]+pTol[0],pCol[1]+pTol[1],pCol[2]+pTol[2]};
+            double lowTolUpHue=1.0f+lowTol[0];
+            double upTolLowHue=upTol[0]-1.0f;
             for (int i=0;i<s;i++)
             {
                 if (inRgbDim)
@@ -1792,9 +1804,9 @@ void LUA_SELECTIVECOLORONONWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_SCALEANDOFFSETWORKIMG[]={
     5,
     sim_script_arg_int32,0,
-    sim_script_arg_float|sim_lua_arg_table,3,
-    sim_script_arg_float|sim_lua_arg_table,3,
-    sim_script_arg_float|sim_lua_arg_table,3,
+    sim_script_arg_double|sim_lua_arg_table,3,
+    sim_script_arg_double|sim_lua_arg_table,3,
+    sim_script_arg_double|sim_lua_arg_table,3,
     sim_script_arg_bool,0,
 };
 
@@ -1805,16 +1817,16 @@ void LUA_SCALEANDOFFSETWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float* pCol=&(inData->at(1).floatData)[0];
-        float* pScale=&(inData->at(2).floatData)[0];
-        float* pOff=&(inData->at(3).floatData)[0];
+        double* pCol=&(inData->at(1).doubleData)[0];
+        double* pScale=&(inData->at(2).doubleData)[0];
+        double* pOff=&(inData->at(3).doubleData)[0];
         bool inRgbDim=inData->at(4).boolData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int s=imgData->resolution[0]*imgData->resolution[1];
-            float col[3];
-            float rgb[3];
+            double col[3];
+            double rgb[3];
             for (int i=0;i<s;i++)
             {
                 if (inRgbDim)
@@ -1868,7 +1880,7 @@ void LUA_SCALEANDOFFSETWORKIMG_CALLBACK(SScriptCallBack* p)
 }
 // --------------------------------------------------------------------------------------
 
-float angleMinusAlpha(float angle,float alpha)
+double angleMinusAlpha(double angle,double alpha)
 {
     double sinAngle0=sin(double(angle));
     double sinAngle1=sin(double(alpha));
@@ -1877,10 +1889,10 @@ float angleMinusAlpha(float angle,float alpha)
     double sin_da=sinAngle0*cosAngle1-cosAngle0*sinAngle1;
     double cos_da=cosAngle0*cosAngle1+sinAngle0*sinAngle1;
     double angle_da=atan2(sin_da,cos_da);
-    return(float(angle_da));
+    return(double(angle_da));
 }
 
-void drawLine(CVisionSensorData* imgData,const float col[3],int x0,int y0,int x1,int y1)
+void drawLine(CVisionSensorData* imgData,const double col[3],int x0,int y0,int x1,int y1)
 {
     int sizeX=imgData->resolution[0];
     int sizeY=imgData->resolution[1];
@@ -1936,7 +1948,7 @@ void drawLine(CVisionSensorData* imgData,const float col[3],int x0,int y0,int x1
     }
 }
 
-void drawLines(CVisionSensorData* imgData,const std::vector<int>& overlayLines,const float col[3])
+void drawLines(CVisionSensorData* imgData,const std::vector<int>& overlayLines,const double col[3])
 {
     for (size_t i=0;i<overlayLines.size()/4;i++)
         drawLine(imgData,col,overlayLines[4*i+0],overlayLines[4*i+1],overlayLines[4*i+2],overlayLines[4*i+3]);
@@ -1951,18 +1963,18 @@ void drawLines(CVisionSensorData* imgData,const std::vector<int>& overlayLines,c
 const int inArgs_BINARYWORKIMG[]={
     13,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
     sim_script_arg_bool,0,
-    sim_script_arg_float|sim_script_arg_table,3,
+    sim_script_arg_double|sim_script_arg_table,3,
 };
 
 void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -1974,51 +1986,51 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float threshold=inData->at(1).floatData[0];
-        float oneProp=inData->at(2).floatData[0];
-        float oneTol=inData->at(3).floatData[0];
-        float xCenter=inData->at(4).floatData[0];
-        float xCenterTol=inData->at(5).floatData[0];
-        float yCenter=inData->at(6).floatData[0];
-        float yCenterTol=inData->at(7).floatData[0];
-        float orient=inData->at(8).floatData[0];
-        float orientTol=inData->at(9).floatData[0];
-        float roundV=inData->at(10).floatData[0];
+        double threshold=inData->at(1).doubleData[0];
+        double oneProp=inData->at(2).doubleData[0];
+        double oneTol=inData->at(3).doubleData[0];
+        double xCenter=inData->at(4).doubleData[0];
+        double xCenterTol=inData->at(5).doubleData[0];
+        double yCenter=inData->at(6).doubleData[0];
+        double yCenterTol=inData->at(7).doubleData[0];
+        double orient=inData->at(8).doubleData[0];
+        double orientTol=inData->at(9).doubleData[0];
+        double roundV=inData->at(10).doubleData[0];
         bool triggerEnabled=inData->at(11).boolData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
-            float col[3]={1.0f,0.0f,1.0f};
+            double col[3]={1.0f,0.0f,1.0f};
             bool overlay=false;
-            if ( (inData->size()>=13)&&(inData->at(12).floatData.size()==3) )
+            if ( (inData->size()>=13)&&(inData->at(12).doubleData.size()==3) )
             {
-                col[0]=inData->at(12).floatData[0];
-                col[1]=inData->at(12).floatData[1];
-                col[2]=inData->at(12).floatData[2];
+                col[0]=inData->at(12).doubleData[0];
+                col[1]=inData->at(12).doubleData[1];
+                col[2]=inData->at(12).doubleData[2];
                 overlay=true;
             }
             std::vector<int> overlayLines;
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float area=0.0f;
-            float proportion=0.0f;
-            float cmx=0.0f;
-            float cmy=0.0f;
-            float angle=0.0f;
-            float roundness=1.0f;
+            double area=0.0f;
+            double proportion=0.0f;
+            double cmx=0.0f;
+            double cmy=0.0f;
+            double angle=0.0f;
+            double roundness=1.0f;
             for (int i=0;i<sizeX;i++)
             {
                 for (int j=0;j<sizeY;j++)
                 {
-                    float intensity=(imgData->workImg[3*(i+j*sizeX)+0]+imgData->workImg[3*(i+j*sizeX)+1]+imgData->workImg[3*(i+j*sizeX)+2])/3.0f;
+                    double intensity=(imgData->workImg[3*(i+j*sizeX)+0]+imgData->workImg[3*(i+j*sizeX)+1]+imgData->workImg[3*(i+j*sizeX)+2])/3.0f;
                     if (intensity>=threshold)
                     { // Binary 1
                         imgData->workImg[3*(i+j*sizeX)+0]=1.0f;
                         imgData->workImg[3*(i+j*sizeX)+1]=1.0f;
                         imgData->workImg[3*(i+j*sizeX)+2]=1.0f;
                         area+=1.0f;
-                        cmx+=float(i);
-                        cmy+=float(j);
+                        cmx+=double(i);
+                        cmy+=double(j);
                     }
                     else
                     { // Binary 0
@@ -2028,24 +2040,24 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
                     }
                 }
             }
-            proportion=area/float(sizeX*sizeY);
+            proportion=area/double(sizeX*sizeY);
             if (area!=0.0f)
             {
                 cmx/=area;
                 cmy/=area;
 
-                float a=0.0f;
-                float b=0.0f;
-                float c=0.0f;
-                float tmpX,tmpY;
+                double a=0.0f;
+                double b=0.0f;
+                double c=0.0f;
+                double tmpX,tmpY;
                 for (int i=0;i<sizeX;i++)
                 {
                     for (int j=0;j<sizeY;j++)
                     {
                         if (imgData->workImg[3*(i+j*sizeX)+0]!=0.0f)
                         { // Binary 1
-                            tmpX=float(i)-cmx;
-                            tmpY=float(j)-cmy;
+                            tmpX=double(i)-cmx;
+                            tmpY=double(j)-cmy;
                             a+=tmpX*tmpX;
                             b+=tmpX*tmpY;
                             c+=tmpY*tmpY;
@@ -2055,15 +2067,15 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
                 b*=2.0f;
                 if ((b!=0.0f)||(a!=c))
                 {
-                    float denom=sqrt(b*b+(a-c)*(a-c));
-                    float sin2ThetaMax=-b/denom;
-                    float sin2ThetaMin=b/denom;
-                    float cos2ThetaMax=-(a-c)/denom;
-                    float cos2ThetaMin=(a-c)/denom;
-                    float iMax=0.5f*(c+a)-0.5f*(a-c)*cos2ThetaMax-0.5f*b*sin2ThetaMax;
-                    float iMin=0.5f*(c+a)-0.5f*(a-c)*cos2ThetaMin-0.5f*b*sin2ThetaMin;
+                    double denom=sqrt(b*b+(a-c)*(a-c));
+                    double sin2ThetaMax=-b/denom;
+                    double sin2ThetaMin=b/denom;
+                    double cos2ThetaMax=-(a-c)/denom;
+                    double cos2ThetaMin=(a-c)/denom;
+                    double iMax=0.5f*(c+a)-0.5f*(a-c)*cos2ThetaMax-0.5f*b*sin2ThetaMax;
+                    double iMin=0.5f*(c+a)-0.5f*(a-c)*cos2ThetaMin-0.5f*b*sin2ThetaMin;
                     roundness=iMin/iMax;
-                    float theta=cos2ThetaMin;
+                    double theta=cos2ThetaMin;
                     if (theta>=1.0f)
                         theta=0.0f;
                     else if (theta<=-1.0f)
@@ -2076,12 +2088,12 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
                     angle=theta;
                     if (overlay)
                     {
-                        float rcm[2]={cmx/float(sizeX),cmy/float(sizeY)};
-                        float l=0.3f-roundness*0.25f;
-                        overlayLines.push_back(int(float(sizeX)*(rcm[0]-cos(theta)*l)));
-                        overlayLines.push_back(int(float(sizeY)*(rcm[1]-sin(theta)*l)));
-                        overlayLines.push_back(int(float(sizeX)*(rcm[0]+cos(theta)*l)));
-                        overlayLines.push_back(int(float(sizeY)*(rcm[1]+sin(theta)*l)));
+                        double rcm[2]={cmx/double(sizeX),cmy/double(sizeY)};
+                        double l=0.3f-roundness*0.25f;
+                        overlayLines.push_back(int(double(sizeX)*(rcm[0]-cos(theta)*l)));
+                        overlayLines.push_back(int(double(sizeY)*(rcm[1]-sin(theta)*l)));
+                        overlayLines.push_back(int(double(sizeX)*(rcm[0]+cos(theta)*l)));
+                        overlayLines.push_back(int(double(sizeY)*(rcm[1]+sin(theta)*l)));
                     }
                 }
                 if (overlay)
@@ -2102,21 +2114,21 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
                 cmx=0.5f;
                 cmy=0.5f;
             }
-            returnData.push_back(proportion);
-            returnData.push_back(cmx/float(sizeX));
-            returnData.push_back(cmy/float(sizeY));
-            returnData.push_back(angle);
-            returnData.push_back(roundness);
+            returnData.push_back((float)proportion);
+            returnData.push_back(float(cmx/double(sizeX)));
+            returnData.push_back(float(cmy/double(sizeY)));
+            returnData.push_back((float)angle);
+            returnData.push_back((float)roundness);
             // Now check if we have to trigger:
             if (triggerEnabled)
             { // we might have to trigger!
                 if (fabs(oneProp-proportion)<oneTol)
                 { // within proportions
-                    if (fabs(xCenter-cmx/float(sizeX))<xCenterTol)
+                    if (fabs(xCenter-cmx/double(sizeX))<xCenterTol)
                     { // within cm x-pos
-                        if (fabs(yCenter-cmy/float(sizeY))<yCenterTol)
+                        if (fabs(yCenter-cmy/double(sizeY))<yCenterTol)
                         { // within cm y-pos
-                            float d=fabs(angleMinusAlpha(orient,angle));
+                            double d=fabs(angleMinusAlpha(orient,angle));
                             if (d<orientTol)
                             { // within angular tolerance
                                 retVal=(roundness<=roundV);
@@ -2147,10 +2159,10 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_BLOBDETECTIONONWORKIMG[]={
     5,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
+    sim_script_arg_double,0,
     sim_script_arg_bool,0,
-    sim_script_arg_float|sim_script_arg_table,3,
+    sim_script_arg_double|sim_script_arg_table,3,
 };
 
 void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -2162,27 +2174,27 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float threshold=inData->at(1).floatData[0];
-        float minBlobSize=inData->at(2).floatData[0];
+        double threshold=inData->at(1).doubleData[0];
+        double minBlobSize=inData->at(2).doubleData[0];
         bool diffColor=inData->at(3).boolData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
-            float col[3]={1.0f,0.0f,1.0f};
+            double col[3]={1.0f,0.0f,1.0f};
             bool overlay=false;
-            if ( (inData->size()>=5)&&(inData->at(4).floatData.size()==3) )
+            if ( (inData->size()>=5)&&(inData->at(4).doubleData.size()==3) )
             {
-                col[0]=inData->at(4).floatData[0];
-                col[1]=inData->at(4).floatData[1];
-                col[2]=inData->at(4).floatData[2];
+                col[0]=inData->at(4).doubleData[0];
+                col[1]=inData->at(4).doubleData[1];
+                col[2]=inData->at(4).doubleData[2];
                 overlay=true;
             }
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
             int s=sizeX*sizeY;
-            const float colorsR[12]={1.0f,0.0f,1.0f,0.0f,1.0f,0.0f,1.0f};
-            const float colorsG[12]={0.0f,1.0f,1.0f,0.0f,0.0f,1.0f,1.0f};
-            const float colorsB[12]={0.0f,0.0f,0.0f,1.0f,1.0f,1.0f,1.0f};
+            const double colorsR[12]={1.0f,0.0f,1.0f,0.0f,1.0f,0.0f,1.0f};
+            const double colorsG[12]={0.0f,1.0f,1.0f,0.0f,0.0f,1.0f,1.0f};
+            const double colorsB[12]={0.0f,0.0f,0.0f,1.0f,1.0f,1.0f,1.0f};
 
             int* cellAppart=new int[s];
             int currentCellID=0;
@@ -2191,7 +2203,7 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
             {
                 for (int i=0;i<sizeX;i++)
                 {
-                    float intensity=(imgData->workImg[3*(i+j*sizeX)+0]+imgData->workImg[3*(i+j*sizeX)+1]+imgData->workImg[3*(i+j*sizeX)+2])/3.0f;
+                    double intensity=(imgData->workImg[3*(i+j*sizeX)+0]+imgData->workImg[3*(i+j*sizeX)+1]+imgData->workImg[3*(i+j*sizeX)+2])/3.0f;
                     if (intensity>=threshold)
                     { // Binary 1
                         // Check the 4 neighbours:
@@ -2284,12 +2296,12 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                 for (int j=0;j<int(cellEquivalencies[i]->size());j++)
                     classIDs[cellEquivalencies[i]->at(j)]=i;
             }
-            std::vector<std::vector<float>*> vertices;
+            std::vector<std::vector<double>*> vertices;
             const int BLOBDATSIZE=6;
-            float* blobData=new float[BLOBDATSIZE*currentCellID];
+            double* blobData=new double[BLOBDATSIZE*currentCellID];
             for (int i=0;i<currentCellID;i++)
             {
-                vertices.push_back(new std::vector<float>);
+                vertices.push_back(new std::vector<double>);
                 blobData[BLOBDATSIZE*i+0]=0.0f; // the number of pixels
             }
 
@@ -2301,7 +2313,7 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                     int b=cellAppart[i+j*sizeX];
                     if (b!=99999)
                     {
-                        float v=0.8f-float(classIDs[b]/7)*0.2f;
+                        double v=0.8f-double(classIDs[b]/7)*0.2f;
                         while (v<0.19f)
                             v+=0.7f;
                         if (diffColor)
@@ -2317,8 +2329,8 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                                 (cellAppart[(i-1)+(j-1)*sizeX]==99999)||(cellAppart[(i-1)+(j+1)*sizeX]==99999)||
                                 (cellAppart[(i+1)+(j-1)*sizeX]==99999)||(cellAppart[(i+1)+(j+1)*sizeX]==99999) )
                         {
-                            vertices[classIDs[b]]->push_back(float(i));
-                            vertices[classIDs[b]]->push_back(float(j));
+                            vertices[classIDs[b]]->push_back(double(i));
+                            vertices[classIDs[b]]->push_back(double(j));
                         }
                         blobData[BLOBDATSIZE*classIDs[b]+0]++;
                     }
@@ -2332,7 +2344,7 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                     int b=cellAppart[i+j*sizeX];
                     if (b!=99999)
                     {
-                        float relSize=blobData[BLOBDATSIZE*classIDs[b]+0]/float(sizeX*sizeY); // relative size of the blob
+                        double relSize=blobData[BLOBDATSIZE*classIDs[b]+0]/double(sizeX*sizeY); // relative size of the blob
                         if (relSize<minBlobSize)
                         { // the blob is too small
                             imgData->workImg[3*(i+j*sizeX)+0]=0.0;
@@ -2353,25 +2365,25 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
 
                 if (vertices[i]->size()!=0)
                 {
-                    float relSize=blobData[BLOBDATSIZE*i+0]/float(sizeX*sizeY); // relative size of the blob
+                    double relSize=blobData[BLOBDATSIZE*i+0]/double(sizeX*sizeY); // relative size of the blob
                     if (relSize>=minBlobSize)
                     { // the blob is large enough
                         blobCount++;
-                        float bestOrientation[6]={0.0f,99999999999999999999999.0f,0.0f,0.0f,0.0f,0.0f};
-                        float previousDa=0.392699081f; // 22.5 degrees
+                        double bestOrientation[6]={0.0f,99999999999999999999999.0f,0.0f,0.0f,0.0f,0.0f};
+                        double previousDa=0.392699081f; // 22.5 degrees
                         for (int j=0;j<4;j++)
                         { // Try 4 orientations..
-                            float a=previousDa*float(j);
-                            float cosa=cos(a);
-                            float sina=sin(a);
-                            float minV[2]={99999.0f,99999.0f};
-                            float maxV[2]={-99999.0f,-99999.0f};
+                            double a=previousDa*double(j);
+                            double cosa=cos(a);
+                            double sina=sin(a);
+                            double minV[2]={99999.0f,99999.0f};
+                            double maxV[2]={-99999.0f,-99999.0f};
                             for (int j=0;j<int(vertices[i]->size()/2);j++)
                             {
-                                float ox=(*vertices[i])[2*j+0];
-                                float oy=(*vertices[i])[2*j+1];
-                                float x=ox*cosa-oy*sina;
-                                float y=ox*sina+oy*cosa;
+                                double ox=(*vertices[i])[2*j+0];
+                                double oy=(*vertices[i])[2*j+1];
+                                double x=ox*cosa-oy*sina;
+                                double y=ox*sina+oy*cosa;
                                 if (x<minV[0])
                                     minV[0]=x;
                                 if (x>maxV[0])
@@ -2381,14 +2393,14 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                                 if (y>maxV[1])
                                     maxV[1]=y;
                             }
-                            float s=(maxV[0]-minV[0])*(maxV[1]-minV[1]);
+                            double s=(maxV[0]-minV[0])*(maxV[1]-minV[1]);
                             if (s<bestOrientation[1])
                             {
                                 bestOrientation[0]=a;
                                 bestOrientation[1]=s;
                                 bestOrientation[2]=maxV[0]-minV[0];
                                 bestOrientation[3]=maxV[1]-minV[1];
-                                float c[2]={(maxV[0]+minV[0])*0.5f,(maxV[1]+minV[1])*0.5f};
+                                double c[2]={(maxV[0]+minV[0])*0.5f,(maxV[1]+minV[1])*0.5f};
                                 bestOrientation[4]=c[0]*cos(-a)-c[1]*sin(-a);
                                 bestOrientation[5]=c[0]*sin(-a)+c[1]*cos(-a);
                             }
@@ -2397,22 +2409,22 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                         for (int k=0;k<3;k++) // the desired precision here
                         {
                             previousDa/=3.0f;
-                            float bestOrientationFromPreviousStep=bestOrientation[0];
+                            double bestOrientationFromPreviousStep=bestOrientation[0];
                             for (int j=-2;j<=2;j++)
                             { // Try 4 orientations..
                                 if (j!=0)
                                 {
-                                    float a=bestOrientationFromPreviousStep+previousDa*float(j);
-                                    float cosa=cos(a);
-                                    float sina=sin(a);
-                                    float minV[2]={99999.0f,99999.0f};
-                                    float maxV[2]={-99999.0f,-99999.0f};
+                                    double a=bestOrientationFromPreviousStep+previousDa*double(j);
+                                    double cosa=cos(a);
+                                    double sina=sin(a);
+                                    double minV[2]={99999.0f,99999.0f};
+                                    double maxV[2]={-99999.0f,-99999.0f};
                                     for (int j=0;j<int(vertices[i]->size()/2);j++)
                                     {
-                                        float ox=(*vertices[i])[2*j+0];
-                                        float oy=(*vertices[i])[2*j+1];
-                                        float x=ox*cosa-oy*sina;
-                                        float y=ox*sina+oy*cosa;
+                                        double ox=(*vertices[i])[2*j+0];
+                                        double oy=(*vertices[i])[2*j+1];
+                                        double x=ox*cosa-oy*sina;
+                                        double y=ox*sina+oy*cosa;
                                         if (x<minV[0])
                                             minV[0]=x;
                                         if (x>maxV[0])
@@ -2422,14 +2434,14 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                                         if (y>maxV[1])
                                             maxV[1]=y;
                                     }
-                                    float s=(maxV[0]-minV[0])*(maxV[1]-minV[1]);
+                                    double s=(maxV[0]-minV[0])*(maxV[1]-minV[1]);
                                     if (s<bestOrientation[1])
                                     {
                                         bestOrientation[0]=a;
                                         bestOrientation[1]=s;
                                         bestOrientation[2]=maxV[0]-minV[0];
                                         bestOrientation[3]=maxV[1]-minV[1];
-                                        float c[2]={(maxV[0]+minV[0])*0.5f,(maxV[1]+minV[1])*0.5f};
+                                        double c[2]={(maxV[0]+minV[0])*0.5f,(maxV[1]+minV[1])*0.5f};
                                         bestOrientation[4]=c[0]*cos(-a)-c[1]*sin(-a);
                                         bestOrientation[5]=c[0]*sin(-a)+c[1]*cos(-a);
                                     }
@@ -2442,35 +2454,35 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
                         bestOrientation[4]+=0.5f; // b/c of pixel precision
                         bestOrientation[5]+=0.5f; // b/c of pixel precision
 
-                        float c[2]={bestOrientation[4]/sizeX,bestOrientation[5]/sizeY};
-                        float v2[2]={bestOrientation[2]*0.5f/sizeX,bestOrientation[3]*0.5f/sizeY};
+                        double c[2]={bestOrientation[4]/sizeX,bestOrientation[5]/sizeY};
+                        double v2[2]={bestOrientation[2]*0.5f/sizeX,bestOrientation[3]*0.5f/sizeY};
                         if (overlay)
                         {
-                            float cosa=cos(bestOrientation[0]);
-                            float sina=sin(bestOrientation[0]);
-                            overlayLines.push_back(int(float(sizeX)*(c[0]+v2[0]*cosa-v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]+v2[0]*sina+v2[1]*cosa)));
-                            overlayLines.push_back(int(float(sizeX)*(c[0]-v2[0]*cosa-v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]-v2[0]*sina+v2[1]*cosa)));
-                            overlayLines.push_back(int(float(sizeX)*(c[0]-v2[0]*cosa-v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]-v2[0]*sina+v2[1]*cosa)));
-                            overlayLines.push_back(int(float(sizeX)*(c[0]-v2[0]*cosa+v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]-v2[0]*sina-v2[1]*cosa)));
-                            overlayLines.push_back(int(float(sizeX)*(c[0]-v2[0]*cosa+v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]-v2[0]*sina-v2[1]*cosa)));
-                            overlayLines.push_back(int(float(sizeX)*(c[0]+v2[0]*cosa+v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]+v2[0]*sina-v2[1]*cosa)));
-                            overlayLines.push_back(int(float(sizeX)*(c[0]+v2[0]*cosa+v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]+v2[0]*sina-v2[1]*cosa)));
-                            overlayLines.push_back(int(float(sizeX)*(c[0]+v2[0]*cosa-v2[1]*sina)));
-                            overlayLines.push_back(int(float(sizeY)*(c[1]+v2[0]*sina+v2[1]*cosa)));
+                            double cosa=cos(bestOrientation[0]);
+                            double sina=sin(bestOrientation[0]);
+                            overlayLines.push_back(int(double(sizeX)*(c[0]+v2[0]*cosa-v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]+v2[0]*sina+v2[1]*cosa)));
+                            overlayLines.push_back(int(double(sizeX)*(c[0]-v2[0]*cosa-v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]-v2[0]*sina+v2[1]*cosa)));
+                            overlayLines.push_back(int(double(sizeX)*(c[0]-v2[0]*cosa-v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]-v2[0]*sina+v2[1]*cosa)));
+                            overlayLines.push_back(int(double(sizeX)*(c[0]-v2[0]*cosa+v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]-v2[0]*sina-v2[1]*cosa)));
+                            overlayLines.push_back(int(double(sizeX)*(c[0]-v2[0]*cosa+v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]-v2[0]*sina-v2[1]*cosa)));
+                            overlayLines.push_back(int(double(sizeX)*(c[0]+v2[0]*cosa+v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]+v2[0]*sina-v2[1]*cosa)));
+                            overlayLines.push_back(int(double(sizeX)*(c[0]+v2[0]*cosa+v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]+v2[0]*sina-v2[1]*cosa)));
+                            overlayLines.push_back(int(double(sizeX)*(c[0]+v2[0]*cosa-v2[1]*sina)));
+                            overlayLines.push_back(int(double(sizeY)*(c[1]+v2[0]*sina+v2[1]*cosa)));
                         }
-                        returnData.push_back(relSize);
-                        returnData.push_back(bestOrientation[0]);
-                        returnData.push_back(c[0]);
-                        returnData.push_back(c[1]);
-                        returnData.push_back(v2[0]*2.0f);
-                        returnData.push_back(v2[1]*2.0f);
+                        returnData.push_back((float)relSize);
+                        returnData.push_back((float)bestOrientation[0]);
+                        returnData.push_back((float)c[0]);
+                        returnData.push_back((float)c[1]);
+                        returnData.push_back((float)v2[0]*2.0f);
+                        returnData.push_back((float)v2[1]*2.0f);
                     }
                 }
             }
@@ -2524,8 +2536,8 @@ void LUA_SHARPENWORKIMG_CALLBACK(SScriptCallBack* p)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float m[9]={-0.1111f,-0.1111f,-0.1111f,  -0.1111f,+1.8888f,-0.1111f,  -0.1111f,-0.1111f,-0.1111f};
-            float* im2=CImageProcess::createRGBImage(sizeX,sizeY);
+            double m[9]={-0.1111f,-0.1111f,-0.1111f,  -0.1111f,+1.8888f,-0.1111f,  -0.1111f,-0.1111f,-0.1111f};
+            double* im2=CImageProcess::createRGBImage(sizeX,sizeY);
             CImageProcess::filter3x3RgbImage(sizeX,sizeY,imgData->workImg,im2,m);
             CImageProcess::copyRGBImage(sizeX,sizeY,im2,imgData->workImg);
             CImageProcess::clampRgbImage(sizeX,sizeY,imgData->workImg,0.0f,1.0f);
@@ -2548,7 +2560,7 @@ void LUA_SHARPENWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_EDGEDETECTIONONWORKIMG[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
 };
 
 void LUA_EDGEDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -2558,20 +2570,20 @@ void LUA_EDGEDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float threshold=inData->at(1).floatData[0];
+        double threshold=inData->at(1).doubleData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float m[9]={-3.0f,-3.0f,-3.0f,  -3.0f,24.0f,-3.0f,  -3.0f,-3.0f,-3.0f};
-            float* im2=CImageProcess::createRGBImage(sizeX,sizeY);
+            double m[9]={-3.0f,-3.0f,-3.0f,  -3.0f,24.0f,-3.0f,  -3.0f,-3.0f,-3.0f};
+            double* im2=CImageProcess::createRGBImage(sizeX,sizeY);
             CImageProcess::filter3x3RgbImage(sizeX,sizeY,imgData->workImg,im2,m);
             CImageProcess::copyRGBImage(sizeX,sizeY,im2,imgData->workImg);
             int s=sizeX*sizeY;
             for (int i=0;i<s;i++)
             {
-                float intens=(imgData->workImg[3*i+0]+imgData->workImg[3*i+1]+imgData->workImg[3*i+2])/3.0f;
+                double intens=(imgData->workImg[3*i+0]+imgData->workImg[3*i+1]+imgData->workImg[3*i+2])/3.0f;
                 if (intens>threshold)
                 {
                     imgData->workImg[3*i+0]=1.0f;
@@ -2604,7 +2616,7 @@ void LUA_EDGEDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_SHIFTWORKIMG[]={
     3,
     sim_script_arg_int32,0,
-    sim_script_arg_float|sim_lua_arg_table,2,
+    sim_script_arg_double|sim_lua_arg_table,2,
     sim_script_arg_bool,0,
 };
 
@@ -2615,18 +2627,18 @@ void LUA_SHIFTWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float xShift=inData->at(1).floatData[0];
-        float yShift=inData->at(1).floatData[1];
-        float wrap=inData->at(2).boolData[0];
+        double xShift=inData->at(1).doubleData[0];
+        double yShift=inData->at(1).doubleData[1];
+        double wrap=inData->at(2).boolData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float* im2=CImageProcess::createRGBImage(sizeX,sizeY);
+            double* im2=CImageProcess::createRGBImage(sizeX,sizeY);
             CImageProcess::copyRGBImage(sizeX,sizeY,imgData->workImg,im2);
-            float xShiftT=xShift*float(sizeX);
-            float yShiftT=yShift*float(sizeY);
+            double xShiftT=xShift*double(sizeX);
+            double yShiftT=yShift*double(sizeY);
             if (xShiftT>=0.0f)
                 xShiftT+=0.5f;
             else
@@ -2696,7 +2708,7 @@ void LUA_SHIFTWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_CIRCULARCUTWORKIMG[]={
     3,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
     sim_script_arg_bool,0,
 };
 
@@ -2707,31 +2719,31 @@ void LUA_CIRCULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float radius=inData->at(1).floatData[0];
-        float copyToBuffer1=inData->at(2).boolData[0];
+        double radius=inData->at(1).doubleData[0];
+        double copyToBuffer1=inData->at(2).boolData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (copyToBuffer1)
             {
                 if (imgData->buff1Img==nullptr)
-                    imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                    imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             }
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
             int smallestSize=std::min<int>(sizeX,sizeY);
-            float centerX=float(sizeX)/2.0f;
-            float centerY=float(sizeY)/2.0f;
-            float radSquared=radius*float(smallestSize)*0.5f;
+            double centerX=double(sizeX)/2.0f;
+            double centerY=double(sizeY)/2.0f;
+            double radSquared=radius*double(smallestSize)*0.5f;
             radSquared*=radSquared;
-            float dx,dy;
+            double dx,dy;
             for (int i=0;i<sizeX;i++)
             {
-                dx=float(i)+0.5f-centerX;
+                dx=double(i)+0.5f-centerX;
                 dx*=dx;
                 for (int j=0;j<sizeY;j++)
                 {
-                    dy=float(j)+0.5f-centerY;
+                    dy=double(j)+0.5f-centerY;
                     dy*=dy;
                     if (dy+dx>radSquared)
                     {
@@ -2774,7 +2786,7 @@ void LUA_CIRCULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_RESIZEWORKIMG[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float|sim_lua_arg_table,2,
+    sim_script_arg_double|sim_lua_arg_table,2,
 };
 
 void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -2784,16 +2796,16 @@ void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float xScale=inData->at(1).floatData[0];
-        float yScale=inData->at(1).floatData[1];
+        double xScale=inData->at(1).doubleData[0];
+        double yScale=inData->at(1).doubleData[1];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float* im=CImageProcess::createRGBImage(sizeX,sizeY);
+            double* im=CImageProcess::createRGBImage(sizeX,sizeY);
             CImageProcess::copyRGBImage(sizeX,sizeY,imgData->workImg,im);
-            float* cntIm=CImageProcess::createIntensityImage(sizeX,sizeY);
+            double* cntIm=CImageProcess::createIntensityImage(sizeX,sizeY);
             int s=sizeX*sizeY;
             for (int i=0;i<s;i++)
             {
@@ -2802,19 +2814,19 @@ void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
                 imgData->workImg[3*i+1]=0.0f;
                 imgData->workImg[3*i+2]=0.0f;
             }
-            float centerX=float(sizeX)/2.0f;
-            float centerY=float(sizeY)/2.0f;
-            float dx,dy;
+            double centerX=double(sizeX)/2.0f;
+            double centerY=double(sizeY)/2.0f;
+            double dx,dy;
             int npx,npy;
             for (int i=0;i<sizeX;i++)
             {
-                dx=(float(i)+0.5f-centerX)/xScale;
+                dx=(double(i)+0.5f-centerX)/xScale;
                 npx=int(centerX+dx);
                 if ((npx>=0)&&(npx<sizeX))
                 {
                     for (int j=0;j<sizeY;j++)
                     {
-                        dy=(float(j)+0.5f-centerY)/yScale;
+                        dy=(double(j)+0.5f-centerY)/yScale;
                         npy=int(centerY+dy);
                         if ((npy>=0)&&(npy<sizeY))
                         {
@@ -2855,7 +2867,7 @@ void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_ROTATEWORKIMG[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
 };
 
 void LUA_ROTATEWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -2865,35 +2877,35 @@ void LUA_ROTATEWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float rotAngle=inData->at(1).floatData[0];
+        double rotAngle=inData->at(1).doubleData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float* im=CImageProcess::createRGBImage(sizeX,sizeY);
+            double* im=CImageProcess::createRGBImage(sizeX,sizeY);
             CImageProcess::copyRGBImage(sizeX,sizeY,imgData->workImg,im);
             int ss=sizeX*sizeY*3;
             for (int i=0;i<ss;i++)
                 imgData->workImg[i]=0.0f;
-            float centerX=float(sizeX)/2.0f;
-            float centerY=float(sizeY)/2.0f;
-            float dx,dy;
+            double centerX=double(sizeX)/2.0f;
+            double centerY=double(sizeY)/2.0f;
+            double dx,dy;
             int npx,npy;
-            float dxp0;
-            float dxp1;
-            float dyp0;
-            float dyp1;
-            float c=cos(-rotAngle);
-            float s=sin(-rotAngle);
+            double dxp0;
+            double dxp1;
+            double dyp0;
+            double dyp1;
+            double c=cos(-rotAngle);
+            double s=sin(-rotAngle);
             for (int i=0;i<sizeX;i++)
             {
-                dx=float(i)+0.5f-centerX;
+                dx=double(i)+0.5f-centerX;
                 dxp0=dx*c;
                 dyp0=dx*s;
                 for (int j=0;j<sizeY;j++)
                 {
-                    dy=float(j)+0.5f-centerY;
+                    dy=double(j)+0.5f-centerY;
                     dxp1=-dy*s;
                     dyp1=dy*c;
                     npx=int(centerX+dxp0+dxp1);
@@ -2926,8 +2938,8 @@ const int inArgs_MATRIX3X3ONWORKIMG[]={
     4,
     sim_script_arg_int32,0,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float|sim_lua_arg_table,9,
+    sim_script_arg_double,0,
+    sim_script_arg_double|sim_lua_arg_table,9,
 };
 
 void LUA_MATRIX3X3ONWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -2938,19 +2950,19 @@ void LUA_MATRIX3X3ONWORKIMG_CALLBACK(SScriptCallBack* p)
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         int passes=inData->at(1).int32Data[0];
-        float multiplier=inData->at(2).floatData[0];
-        float m[9];
-        if ( (inData->size()<4)||(inData->at(3).floatData.size()<9) )
+        double multiplier=inData->at(2).doubleData[0];
+        double m[9];
+        if ( (inData->size()<4)||(inData->at(3).doubleData.size()<9) )
         {
             for (size_t i=0;i<9;i++)
                 m[i]=1.0f;
-            const float sigma=2.0f;
-            float tot=0.0f;
+            const double sigma=2.0f;
+            double tot=0.0f;
             for (int i=-1;i<2;i++)
             {
                 for (int j=-1;j<2;j++)
                 {
-                    float v=pow(2.7182818f,-(i*i+j*j)/(2.0f*sigma*sigma))/(2.0f*3.14159265f*sigma*sigma);
+                    double v=pow(2.7182818f,-(i*i+j*j)/(2.0f*sigma*sigma))/(2.0f*3.14159265f*sigma*sigma);
                     m[1+i+(j+1)*3]=v;
                     tot+=v;
                 }
@@ -2961,14 +2973,14 @@ void LUA_MATRIX3X3ONWORKIMG_CALLBACK(SScriptCallBack* p)
         else
         {
             for (size_t i=0;i<9;i++)
-                m[i]=inData->at(3).floatData[i]*multiplier;
+                m[i]=inData->at(3).doubleData[i]*multiplier;
         }
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float* im2=CImageProcess::createRGBImage(sizeX,sizeY);
+            double* im2=CImageProcess::createRGBImage(sizeX,sizeY);
             for (int i=0;i<passes/2;i++)
             {
                 CImageProcess::filter3x3RgbImage(sizeX,sizeY,imgData->workImg,im2,m);
@@ -3000,8 +3012,8 @@ const int inArgs_MATRIX5X5ONWORKIMG[]={
     4,
     sim_script_arg_int32,0,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
-    sim_script_arg_float|sim_lua_arg_table,25,
+    sim_script_arg_double,0,
+    sim_script_arg_double|sim_lua_arg_table,25,
 };
 
 void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -3012,19 +3024,19 @@ void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
         int passes=inData->at(1).int32Data[0];
-        float multiplier=inData->at(2).floatData[0];
-        float m[25];
-        if ( (inData->size()<4)||(inData->at(3).floatData.size()<25) )
+        double multiplier=inData->at(2).doubleData[0];
+        double m[25];
+        if ( (inData->size()<4)||(inData->at(3).doubleData.size()<25) )
         {
             for (size_t i=0;i<25;i++)
                 m[i]=1.0f;
-            const float sigma=2.0f;
-            float tot=0.0f;
+            const double sigma=2.0f;
+            double tot=0.0f;
             for (int i=-2;i<3;i++)
             {
                 for (int j=-2;j<3;j++)
                 {
-                    float v=pow(2.7182818f,-(i*i+j*j)/(2.0f*sigma*sigma))/(2.0f*3.14159265f*sigma*sigma);
+                    double v=pow(2.7182818f,-(i*i+j*j)/(2.0f*sigma*sigma))/(2.0f*3.14159265f*sigma*sigma);
                     m[i+2+(j+2)*5]=v;
                     tot+=v;
                 }
@@ -3035,14 +3047,14 @@ void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
         else
         {
             for (size_t i=0;i<25;i++)
-                m[i]=inData->at(3).floatData[i]*multiplier;
+                m[i]=inData->at(3).doubleData[i]*multiplier;
         }
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float* im2=CImageProcess::createRGBImage(sizeX,sizeY);
+            double* im2=CImageProcess::createRGBImage(sizeX,sizeY);
             for (int i=0;i<passes/2;i++)
             {
                 CImageProcess::filter5x5RgbImage(sizeX,sizeY,imgData->workImg,im2,m);
@@ -3073,7 +3085,7 @@ void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_RECTANGULARCUTWORKIMG[]={
     3,
     sim_script_arg_int32,0,
-    sim_script_arg_float|sim_lua_arg_table,2,
+    sim_script_arg_double|sim_lua_arg_table,2,
     sim_script_arg_bool,0,
 };
 
@@ -3084,31 +3096,31 @@ void LUA_RECTANGULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float nsizeX=inData->at(1).floatData[0];
-        float nsizeY=inData->at(1).floatData[1];
-        float copyToBuffer1=inData->at(2).boolData[0];
+        double nsizeX=inData->at(1).doubleData[0];
+        double nsizeY=inData->at(1).doubleData[1];
+        double copyToBuffer1=inData->at(2).boolData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             if (copyToBuffer1)
             {
                 if (imgData->buff1Img==nullptr)
-                    imgData->buff1Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                    imgData->buff1Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             }
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
-            float centerX=float(sizeX)/2.0f;
-            float centerY=float(sizeY)/2.0f;
-            float dx,dy;
-            float hdx=nsizeX*0.5f;
-            float hdy=nsizeY*0.5f;
+            double centerX=double(sizeX)/2.0f;
+            double centerY=double(sizeY)/2.0f;
+            double dx,dy;
+            double hdx=nsizeX*0.5f;
+            double hdy=nsizeY*0.5f;
             for (int i=0;i<sizeX;i++)
             {
-                dx=float(i)+0.5f-centerX;
+                dx=double(i)+0.5f-centerX;
                 for (int j=0;j<sizeY;j++)
                 {
-                    dy=float(j)+0.5f-centerY;
-                    if ((fabs(dx)>hdx*float(sizeX))||(fabs(dy)>hdy*float(sizeY)))
+                    dy=double(j)+0.5f-centerY;
+                    if ((fabs(dx)>hdx*double(sizeX))||(fabs(dy)>hdy*double(sizeY)))
                     {
                         if (copyToBuffer1)
                         {
@@ -3184,31 +3196,31 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                 returnRgb=false;
             C7Vector sensorTr;
             simGetObjectPosition(handle,-1,sensorTr.X.data);
-            float q[4];
+            double q[4];
             simGetObjectQuaternion(handle,-1,q);
             sensorTr.Q=C4Vector(q[3],q[0],q[1],q[2]); // CoppeliaSim quaternion, internally: w x y z, at interfaces: x y z w
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
 
             int perspectiveOperation;
-            simGetObjectInt32Parameter(handle,sim_visionintparam_perspective_operation,&perspectiveOperation);
-            float np,fp;
-            simGetObjectFloatParameter(handle,sim_visionfloatparam_near_clipping,&np);
-            simGetObjectFloatParameter(handle,sim_visionfloatparam_far_clipping,&fp);
-            float depthThresh=np;
-            float depthRange=fp-depthThresh;
-            float farthestValue=fp;
-            float xAngle;
-            simGetObjectFloatParameter(handle,sim_visionfloatparam_perspective_angle,&xAngle);
-            float yAngle=xAngle;
-            float ratio=float(sizeX)/float(sizeY);
+            simGetObjectInt32Param(handle,sim_visionintparam_perspective_operation,&perspectiveOperation);
+            double np,fp;
+            simGetObjectFloatParam(handle,sim_visionfloatparam_near_clipping,&np);
+            simGetObjectFloatParam(handle,sim_visionfloatparam_far_clipping,&fp);
+            double depthThresh=np;
+            double depthRange=fp-depthThresh;
+            double farthestValue=fp;
+            double xAngle;
+            simGetObjectFloatParam(handle,sim_visionfloatparam_perspective_angle,&xAngle);
+            double yAngle=xAngle;
+            double ratio=double(sizeX)/double(sizeY);
             if (sizeX>sizeY)
-                yAngle=2.0f*(float)atan(tan(xAngle/2.0f)/ratio);
+                yAngle=2.0*atan(tan(xAngle/2.0)/ratio);
             else
-                xAngle=2.0f*(float)atan(tan(xAngle/2.0f)*ratio);
-            float xS;
-            simGetObjectFloatParameter(handle,sim_visionfloatparam_ortho_size,&xS);
-            float yS=xS;
+                xAngle=2.0*atan(tan(xAngle/2.0)*ratio);
+            double xS;
+            simGetObjectFloatParam(handle,sim_visionfloatparam_ortho_size,&xS);
+            double yS=xS;
             if (sizeX>sizeY)
                 yS=xS/ratio;
             else
@@ -3225,26 +3237,26 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 
             if (perspectiveOperation!=0)
             {
-                float yDist=0.0f;
-                float dy=0.0f;
+                double yDist=0.0f;
+                double dy=0.0f;
                 if (yPtCnt>1)
                 {
-                    dy=yAngle/float(yPtCnt-1);
+                    dy=yAngle/double(yPtCnt-1);
                     yDist=-yAngle*0.5f;
                 }
-                float dx=0.0f;
+                double dx=0.0f;
                 if (xPtCnt>1)
-                    dx=xAngle/float(xPtCnt-1);
+                    dx=xAngle/double(xPtCnt-1);
 
-                float xAlpha=0.5f/(tan(xAngle*0.5f));
-                float yAlpha=0.5f/(tan(yAngle*0.5f));
+                double xAlpha=0.5f/(tan(xAngle*0.5f));
+                double yAlpha=0.5f/(tan(yAngle*0.5f));
 
-                float xBeta=2.0f*tan(xAngle*0.5f);
-                float yBeta=2.0f*tan(yAngle*0.5f);
+                double xBeta=2.0f*tan(xAngle*0.5f);
+                double yBeta=2.0f*tan(yAngle*0.5f);
 
                 for (int j=0;j<yPtCnt;j++)
                 {
-                    float tanYDistTyAlpha;
+                    double tanYDistTyAlpha;
                     int yRow;
                     if (angularSpace)
                     {
@@ -3254,7 +3266,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                     else
                         yRow=int((0.5f+yDist/yAngle)*(sizeY-0.5f));
 
-                    float xDist=0.0f;
+                    double xDist=0.0f;
                     if (xPtCnt>1)
                         xDist=-xAngle*0.5f;
                     for (int i=0;i<xPtCnt;i++)
@@ -3262,11 +3274,11 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         C3Vector v;
                         if (angularSpace)
                         {
-                            float tanXDistTxAlpha=tan(xDist)*xAlpha;
+                            double tanXDistTxAlpha=tan(xDist)*xAlpha;
                             int xRow=int((0.5f-tanXDistTxAlpha)*(sizeX-0.5f));
                             int indexP=3*(xRow+yRow*sizeX);
-                            float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
-                            float zDist=depthThresh+intensity*depthRange;
+                            double intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
+                            double zDist=depthThresh+intensity*depthRange;
                             v.setData(tanXDistTxAlpha*xBeta*zDist,tanYDistTyAlpha*yBeta*zDist,zDist);
                             if (returnRgb)
                             {
@@ -3279,8 +3291,8 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         {
                             int xRow=int((0.5f-xDist/xAngle)*(sizeX-0.5f));
                             int indexP=3*(xRow+yRow*sizeX);
-                            float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
-                            float zDist=depthThresh+intensity*depthRange;
+                            double intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
+                            double zDist=depthThresh+intensity*depthRange;
                             v.setData(tan(xAngle*0.5f)*xDist/(xAngle*0.5f)*zDist,tan(yAngle*0.5f)*yDist/(yAngle*0.5f)*zDist,zDist);
                             if (returnRgb)
                             {
@@ -3290,25 +3302,25 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                             }
                         }
 
-                        float l=v.getLength();
+                        double l=v.getLength();
                         if (l>farthestValue)
                         {
                             v=(v/l)*farthestValue;
                             if (absCoords)
                                 v=sensorTr*v;
-                            returnData.push_back(v(0));
-                            returnData.push_back(v(1));
-                            returnData.push_back(v(2));
-                            returnData.push_back(farthestValue);
+                            returnData.push_back((float)v(0));
+                            returnData.push_back((float)v(1));
+                            returnData.push_back((float)v(2));
+                            returnData.push_back((float)farthestValue);
                         }
                         else
                         {
                             if (absCoords)
                                 v=sensorTr*v;
-                            returnData.push_back(v(0));
-                            returnData.push_back(v(1));
-                            returnData.push_back(v(2));
-                            returnData.push_back(l);
+                            returnData.push_back((float)v(0));
+                            returnData.push_back((float)v(1));
+                            returnData.push_back((float)v(2));
+                            returnData.push_back((float)l);
                         }
                         xDist+=dx;
                     }
@@ -3317,30 +3329,30 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
             }
             else
             {
-                float yDist=0.0f;
-                float dy=0.0f;
+                double yDist=0.0f;
+                double dy=0.0f;
                 if (yPtCnt>1)
                 {
-                    dy=yS/float(yPtCnt-1);
+                    dy=yS/double(yPtCnt-1);
                     yDist=-yS*0.5f;
                 }
-                float dx=0.0f;
+                double dx=0.0f;
                 if (xPtCnt>1)
-                    dx=xS/float(xPtCnt-1);
+                    dx=xS/double(xPtCnt-1);
 
                 for (int j=0;j<yPtCnt;j++)
                 {
                     int yRow=int(((yDist+yS*0.5f)/yS)*(sizeY-0.5f));
 
-                    float xDist=0.0f;
+                    double xDist=0.0f;
                     if (xPtCnt>1)
                         xDist=-xS*0.5f;
                     for (int i=0;i<xPtCnt;i++)
                     {
                         int xRow=int((1.0f-((xDist+xS*0.5f)/xS))*(sizeX-0.5f));
                         int indexP=3*(xRow+yRow*sizeX);
-                        float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
-                        float zDist=depthThresh+intensity*depthRange;
+                        double intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
+                        double zDist=depthThresh+intensity*depthRange;
                         if (returnRgb)
                         {
                             returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
@@ -3350,17 +3362,17 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                         if (absCoords)
                         {
                             C3Vector absv(sensorTr*C3Vector(xDist,yDist,zDist));
-                            returnData.push_back(absv(0));
-                            returnData.push_back(absv(1));
-                            returnData.push_back(absv(2));
+                            returnData.push_back((float)absv(0));
+                            returnData.push_back((float)absv(1));
+                            returnData.push_back((float)absv(2));
                         }
                         else
                         {
-                            returnData.push_back(xDist);
-                            returnData.push_back(yDist);
-                            returnData.push_back(zDist);
+                            returnData.push_back((float)xDist);
+                            returnData.push_back((float)yDist);
+                            returnData.push_back((float)zDist);
                         }
-                        returnData.push_back(zDist);
+                        returnData.push_back((float)zDist);
                         xDist+=dx;
                     }
                     yDist+=dy;
@@ -3395,7 +3407,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 const int inArgs_CHANGEDPIXELSONWORKIMG[]={
     2,
     sim_script_arg_int32,0,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
 };
 
 void LUA_CHANGEDPIXELSONWORKIMG_CALLBACK(SScriptCallBack* p)
@@ -3406,21 +3418,21 @@ void LUA_CHANGEDPIXELSONWORKIMG_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
-        float thresh=inData->at(1).floatData[0];
+        double thresh=inData->at(1).doubleData[0];
         CVisionSensorData* imgData=visionContainer->getImageObject(handle);
         if (imgData!=nullptr)
         {
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
             if (imgData->buff2Img==nullptr)
-                imgData->buff2Img=new float[imgData->resolution[0]*imgData->resolution[1]*3];
+                imgData->buff2Img=new double[imgData->resolution[0]*imgData->resolution[1]*3];
             for (int j=0;j<sizeY;j++)
             {
                 for (int i=0;i<sizeX;i++)
                 {
-                    float buffIntens=(imgData->buff2Img[3*(i+j*sizeX)+0]+imgData->buff2Img[3*(i+j*sizeX)+1]+imgData->buff2Img[3*(i+j*sizeX)+2])/3.0f;
-                    float imgIntens=(imgData->workImg[3*(i+j*sizeX)+0]+imgData->workImg[3*(i+j*sizeX)+1]+imgData->workImg[3*(i+j*sizeX)+2])/3.0f;
-                    float diff=imgIntens-buffIntens;
+                    double buffIntens=(imgData->buff2Img[3*(i+j*sizeX)+0]+imgData->buff2Img[3*(i+j*sizeX)+1]+imgData->buff2Img[3*(i+j*sizeX)+2])/3.0f;
+                    double imgIntens=(imgData->workImg[3*(i+j*sizeX)+0]+imgData->workImg[3*(i+j*sizeX)+1]+imgData->workImg[3*(i+j*sizeX)+2])/3.0f;
+                    double diff=imgIntens-buffIntens;
                     if (buffIntens==0.0f)
                         buffIntens=0.001f;
                     if (fabs(diff)/buffIntens>=thresh)
@@ -3474,7 +3486,7 @@ const int inArgs_VELODYNEDATAFROMWORKIMG[]={
     4,
     sim_script_arg_int32,0,
     sim_script_arg_int32|sim_lua_arg_table,2,
-    sim_script_arg_float,0,
+    sim_script_arg_double,0,
     sim_script_arg_bool,0,
 };
 
@@ -3496,7 +3508,7 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
         int handle=getVisionSensorHandle(hhandle,p->objectID);
         int xPtCnt=inData->at(1).int32Data[0];
         int yPtCnt=inData->at(1).int32Data[1];
-        float vAngle=inData->at(2).floatData[0];
+        double vAngle=inData->at(2).doubleData[0];
         bool returnRgb=false;
         if (inData->size()>=4)
             returnRgb=inData->at(3).boolData[0];
@@ -3507,59 +3519,59 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                 returnRgb=false;
             C7Vector sensorTr;
             simGetObjectPosition(handle,-1,sensorTr.X.data);
-            float q[4];
+            double q[4];
             simGetObjectQuaternion(handle,-1,q);
             sensorTr.Q=C4Vector(q[3],q[0],q[1],q[2]); // CoppeliaSim quaternion, internally: w x y z, at interfaces: x y z w
 
             int sizeX=imgData->resolution[0];
             int sizeY=imgData->resolution[1];
 
-            float np,fp;
-            simGetObjectFloatParameter(handle,sim_visionfloatparam_near_clipping,&np);
-            simGetObjectFloatParameter(handle,sim_visionfloatparam_far_clipping,&fp);
-            float xAngle;
-            simGetObjectFloatParameter(handle,sim_visionfloatparam_perspective_angle,&xAngle);
+            double np,fp;
+            simGetObjectFloatParam(handle,sim_visionfloatparam_near_clipping,&np);
+            simGetObjectFloatParam(handle,sim_visionfloatparam_far_clipping,&fp);
+            double xAngle;
+            simGetObjectFloatParam(handle,sim_visionfloatparam_perspective_angle,&xAngle);
 
-            float depthThresh=np;
-            float depthRange=fp-depthThresh;
-            float farthestValue=fp;
-            float yAngle=xAngle;
-            float ratio=float(sizeX)/float(sizeY);
+            double depthThresh=np;
+            double depthRange=fp-depthThresh;
+            double farthestValue=fp;
+            double yAngle=xAngle;
+            double ratio=double(sizeX)/double(sizeY);
             if (sizeX>sizeY)
-                yAngle=2.0f*(float)atan(tan(xAngle/2.0f)/ratio);
+                yAngle=2.0f*(double)atan(tan(xAngle/2.0f)/ratio);
             else
-                xAngle=2.0f*(float)atan(tan(xAngle/2.0f)*ratio);
+                xAngle=2.0f*(double)atan(tan(xAngle/2.0f)*ratio);
             returnData.clear();
             returnData.push_back(float(xPtCnt));
             returnData.push_back(float(yPtCnt));
 
             //if (sensor->getPerspectiveOperation())
             {
-                float dx=0.0f;
+                double dx=0.0f;
                 if (xPtCnt>1)
-                    dx=xAngle/float(xPtCnt-1);
-                float xDist=0.0f;
+                    dx=xAngle/double(xPtCnt-1);
+                double xDist=0.0f;
                 if (xPtCnt>1)
                     xDist=-xAngle*0.5f;
 
-                float xAlpha=0.5f/(tan(xAngle*0.5f));
+                double xAlpha=0.5f/(tan(xAngle*0.5f));
 
-                float xBeta=2.0f*tan(xAngle*0.5f);
-                float yBeta=2.0f*tan(yAngle*0.5f);
+                double xBeta=2.0f*tan(xAngle*0.5f);
+                double yBeta=2.0f*tan(yAngle*0.5f);
 
                 for (int j=0;j<xPtCnt;j++)
                 {
-                    float h=1.0f/cos(xDist);
+                    double h=1.0f/cos(xDist);
 
-                    float yDist=0.0f;
-                    float dy=0.0f;
+                    double yDist=0.0f;
+                    double dy=0.0f;
                     if (yPtCnt>1)
                     {
-                        dy=vAngle/float(yPtCnt-1);
+                        dy=vAngle/double(yPtCnt-1);
                         yDist=-vAngle*0.5f;
                     }
 
-                    float tanXDistTxAlpha=tan(xDist)*xAlpha;
+                    double tanXDistTxAlpha=tan(xDist)*xAlpha;
                     int xRow=int((0.5f-tanXDistTxAlpha)*(sizeX-0.5f));
 
                     if (xRow<0)
@@ -3567,45 +3579,45 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
                     if (xRow>=sizeX)
                         xRow=sizeX-1;
 
-                    float yAlpha=0.5f/(tan(yAngle*0.5f));
+                    double yAlpha=0.5f/(tan(yAngle*0.5f));
 
                     for (int i=0;i<yPtCnt;i++)
                     {
-                        float tanYDistTyAlpha=tan(yDist)*h*yAlpha;
+                        double tanYDistTyAlpha=tan(yDist)*h*yAlpha;
                         int yRow=int((tanYDistTyAlpha+0.5f)*(sizeY-0.5f));
                         if (yRow<0)
                             yRow=0;
                         if (yRow>=sizeY)
                             yRow=sizeY-1;
                         int indexP=3*(xRow+yRow*sizeX);
-                        float intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
+                        double intensity=(imgData->workImg[indexP+0]+imgData->workImg[indexP+1]+imgData->workImg[indexP+2])/3.0f;
                         if (returnRgb)
                         {
                             returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+0]*255.1f));
                             returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+1]*255.1f));
                             returnCol.push_back((unsigned char)(imgData->buff1Img[indexP+2]*255.1f));
                         }
-                        float zDist=depthThresh+intensity*depthRange;
+                        double zDist=depthThresh+intensity*depthRange;
                         C3Vector v(tanXDistTxAlpha*xBeta*zDist,tanYDistTyAlpha*yBeta*zDist,zDist);
-                        float l=v.getLength();
+                        double l=v.getLength();
                         if (l>farthestValue)
                         {
                             v=(v/l)*farthestValue;
                             if (absCoords)
                                 v=sensorTr*v;
-                            returnData.push_back(v(0));
-                            returnData.push_back(v(1));
-                            returnData.push_back(v(2));
-                            returnData.push_back(farthestValue);
+                            returnData.push_back((float)v(0));
+                            returnData.push_back((float)v(1));
+                            returnData.push_back((float)v(2));
+                            returnData.push_back((float)farthestValue);
                         }
                         else
                         {
                             if (absCoords)
                                 v=sensorTr*v;
-                            returnData.push_back(v(0));
-                            returnData.push_back(v(1));
-                            returnData.push_back(v(2));
-                            returnData.push_back(l);
+                            returnData.push_back((float)v(0));
+                            returnData.push_back((float)v(1));
+                            returnData.push_back((float)v(2));
+                            returnData.push_back((float)l);
                         }
                         yDist+=dy;
                     }
@@ -3673,20 +3685,20 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     // Register the new Lua commands:
 
     // Spherical vision sensor:
-    simRegisterScriptCallbackFunction(LUA_HANDLESPHERICAL_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLESPHERICAL_COMMAND,"(int passiveVisionSensorHandleForRGB,int[6] activeVisionSensorHandles,float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth=-1)"),LUA_HANDLESPHERICAL_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLESPHERICAL_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLESPHERICAL_COMMAND,"(int passiveVisionSensorHandleForRGB,int[6] activeVisionSensorHandles,double horizontalAngle,double verticalAngle,int passiveVisionSensorHandleForDepth=-1)"),LUA_HANDLESPHERICAL_CALLBACK);
 
     // Anaglyph sensor:
-    simRegisterScriptCallbackFunction(LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLEANAGLYPHSTEREO_COMMAND,"(int passiveVisionSensorHandle,int[2] activeVisionSensorHandles,float[6] leftAndRightColors=nil)"),LUA_HANDLEANAGLYPHSTEREO_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLEANAGLYPHSTEREO_COMMAND,"(int passiveVisionSensorHandle,int[2] activeVisionSensorHandles,double[6] leftAndRightColors=nil)"),LUA_HANDLEANAGLYPHSTEREO_CALLBACK);
 
 
     // HDL-64E:
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEHDL64E_COMMAND,"(int[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,float[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEHDL64E_COMMAND,"(int[4] visionSensorHandles,double frequency,int options=0,int pointSize=2,double[2] coloring_closeFarDist={1,5},double displayScalingFactor=1)"),LUA_CREATEVELODYNEHDL64E_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEHDL64E_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEHDL64E_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("float[] points,string colorData=",LUA_HANDLEVELODYNEHDL64E_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("double[] points,string colorData=",LUA_HANDLEVELODYNEHDL64E_COMMAND,"(int velodyneHandle,double dt)"),LUA_HANDLEVELODYNEHDL64E_CALLBACK);
 
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEVPL16_COMMAND,"(int[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,float[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEVPL16_COMMAND,"(int[4] visionSensorHandles,double frequency,int options=0,int pointSize=2,double[2] coloring_closeFarDist={1,5},double displayScalingFactor=1)"),LUA_CREATEVELODYNEVPL16_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEVPL16_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEVPL16_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("float[] points,string colorData=",LUA_HANDLEVELODYNEVPL16_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("double[] points,string colorData=",LUA_HANDLEVELODYNEVPL16_COMMAND,"(int velodyneHandle,double dt)"),LUA_HANDLEVELODYNEVPL16_CALLBACK);
 
     // basic vision sensor processing:
     simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORIMGTOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SENSORIMGTOWORKIMG_CALLBACK);
@@ -3706,27 +3718,27 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simRegisterScriptCallbackFunction(LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_HORIZONTALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_HORIZONTALFLIPWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_HORIZONTALFLIPWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_VERTICALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_VERTICALFLIPWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_VERTICALFLIPWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_UNIFORMIMGTOWORKIMG_COMMAND,"(int visionSensorHandle,float[3] color)"),LUA_UNIFORMIMGTOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_UNIFORMIMGTOWORKIMG_COMMAND,"(int visionSensorHandle,double[3] color)"),LUA_UNIFORMIMGTOWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_NORMALIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_NORMALIZEWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_NORMALIZEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_COLORSEGMENTATIONONWORKIMG_COMMAND,"(int visionSensorHandle,float maxColorColorDistance)"),LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_INTENSITYSCALEONWORKIMG_COMMAND,"(int visionSensorHandle,float start,float end,bool greyScale)"),LUA_INTENSITYSCALEONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SELECTIVECOLORONONWORKIMG_COMMAND,"(int visionSensorHandle,float[3] color,float[3] colorTolerance,bool rgb,bool keep,bool removedPartToBuffer1)"),LUA_SELECTIVECOLORONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SCALEANDOFFSETWORKIMG_COMMAND,"(int visionSensorHandle,float[3] preOffset,float[3] scaling,float[3] postOffset,bool rgb)"),LUA_SCALEANDOFFSETWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BINARYWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BINARYWORKIMG_COMMAND,"(int visionSensorHandle,float threshold,float oneProportion,float oneTol,float xCenter,float xCenterTol,float yCenter,float yCenterTol,float orient,float orientTol,float roundness,bool enableTrigger,float[3] overlayColor={1.0,0.0,1.0})"),LUA_BINARYWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BLOBDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold,float minBlobSize,bool modifyWorkImage,float[3] overlayColor={1.0,0.0,1.0})"),LUA_BLOBDETECTIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_COLORSEGMENTATIONONWORKIMG_COMMAND,"(int visionSensorHandle,double maxColorColorDistance)"),LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_INTENSITYSCALEONWORKIMG_COMMAND,"(int visionSensorHandle,double start,double end,bool greyScale)"),LUA_INTENSITYSCALEONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SELECTIVECOLORONONWORKIMG_COMMAND,"(int visionSensorHandle,double[3] color,double[3] colorTolerance,bool rgb,bool keep,bool removedPartToBuffer1)"),LUA_SELECTIVECOLORONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SCALEANDOFFSETWORKIMG_COMMAND,"(int visionSensorHandle,double[3] preOffset,double[3] scaling,double[3] postOffset,bool rgb)"),LUA_SCALEANDOFFSETWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BINARYWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BINARYWORKIMG_COMMAND,"(int visionSensorHandle,double threshold,double oneProportion,double oneTol,double xCenter,double xCenterTol,double yCenter,double yCenterTol,double orient,double orientTol,double roundness,bool enableTrigger,double[3] overlayColor={1.0,0.0,1.0})"),LUA_BINARYWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BLOBDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,double threshold,double minBlobSize,bool modifyWorkImage,double[3] overlayColor={1.0,0.0,1.0})"),LUA_BLOBDETECTIONONWORKIMG_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_SHARPENWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHARPENWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SHARPENWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_EDGEDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_EDGEDETECTIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SHIFTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHIFTWORKIMG_COMMAND,"(int visionSensorHandle,float[2] shift,bool wrapAround)"),LUA_SHIFTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_CIRCULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,float radius,bool copyToBuffer1)"),LUA_CIRCULARCUTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_RESIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RESIZEWORKIMG_COMMAND,"(int visionSensorHandle,float[2] scaling)"),LUA_RESIZEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_ROTATEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ROTATEWORKIMG_COMMAND,"(int visionSensorHandle,float rotationAngle)"),LUA_ROTATEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX3X3ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,float[9] matrix=nil)"),LUA_MATRIX3X3ONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX5X5ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,float[25] matrix=nil)"),LUA_MATRIX5X5ONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RECTANGULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,float[2] sizes,bool copyToBuffer1)"),LUA_RECTANGULARCUTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_DISTORT_COMMAND_PLUGIN,strConCat("",LUA_DISTORT_COMMAND,"(int visionSensorHandle,int[] pixelMap=nil,float[] depthScalings=nil)"),LUA_DISTORT_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_EDGEDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,double threshold)"),LUA_EDGEDETECTIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SHIFTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHIFTWORKIMG_COMMAND,"(int visionSensorHandle,double[2] shift,bool wrapAround)"),LUA_SHIFTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_CIRCULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,double radius,bool copyToBuffer1)"),LUA_CIRCULARCUTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_RESIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RESIZEWORKIMG_COMMAND,"(int visionSensorHandle,double[2] scaling)"),LUA_RESIZEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_ROTATEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ROTATEWORKIMG_COMMAND,"(int visionSensorHandle,double rotationAngle)"),LUA_ROTATEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX3X3ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,double multiplier,double[9] matrix=nil)"),LUA_MATRIX3X3ONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX5X5ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,double multiplier,double[25] matrix=nil)"),LUA_MATRIX5X5ONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RECTANGULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,double[2] sizes,bool copyToBuffer1)"),LUA_RECTANGULARCUTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_DISTORT_COMMAND_PLUGIN,strConCat("",LUA_DISTORT_COMMAND,"(int visionSensorHandle,int[] pixelMap=nil,double[] depthScalings=nil)"),LUA_DISTORT_CALLBACK);
     simRegisterScriptCallbackFunction(LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_COORDINATESFROMWORKIMG_COMMAND,"(int visionSensorHandle,int[2] xyPointCount,bool evenlySpacedInAngularSpace,bool returnColorData=false)"),LUA_COORDINATESFROMWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(int visionSensorHandle,int[2] xyPointCount,float vAngle,bool returnColorData=false)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"(int visionSensorHandle,double threshold)"),LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(int visionSensorHandle,int[2] xyPointCount,double vAngle,bool returnColorData=false)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
 
 
     // Following for backward compatibility:

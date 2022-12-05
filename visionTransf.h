@@ -5,14 +5,14 @@
 class CVisionTransf  
 {
 public:
-    CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth);
+    CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],double horizontalAngle,double verticalAngle,int passiveVisionSensorHandleForDepth);
     virtual ~CVisionTransf();
 
     bool isActiveVisionSensorResolutionCorrect();
     bool areRGBAndDepthVisionSensorResolutionsCorrect() const;
     bool areActiveVisionSensorsExplicitelyHandled() const;
     bool doAllObjectsExistAndAreVisionSensors() const;
-    bool isSame(int scriptHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passive1,int passive2) const;
+    bool isSame(int scriptHandle,const int activeVisionSensorHandles[6],double horizontalAngle,double verticalAngle,int passive1,int passive2) const;
     int getReferencePassiveVisionSensorHandle() const;
     int getRelatedScriptHandle() const;
 
@@ -30,16 +30,16 @@ private:
     int _scriptHandle;
     int _activeVisionSensorHandles[6];
     bool _usedActiveVisionSensors[6];
-    float _horizontalAngle;
-    float _verticalAngle;
+    double _horizontalAngle;
+    double _verticalAngle;
     int _passiveVisionSensorResolution[2];
     int _activeVisionSensorResolutionXY;
 
-    float* _activeVisionSensorImages[6];
+    double* _activeVisionSensorImages[6];
 
-    float* _passiveVisionSensorImage;
+    double* _passiveVisionSensorImage;
 
     int* _mapP;
-    float* _mapI;
+    double* _mapI;
     unsigned char* _mapV;
 };

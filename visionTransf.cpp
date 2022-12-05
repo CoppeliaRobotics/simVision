@@ -1,10 +1,10 @@
 #include "visionTransf.h"
-#include "simLib.h"
+#include "vis.h"
 #include <math.h>
 
 #define PI_VAL (3.14159265f)
 
-CVisionTransf::CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth)
+CVisionTransf::CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,const int activeVisionSensorHandles[6],double horizontalAngle,double verticalAngle,int passiveVisionSensorHandleForDepth)
 {
     _scriptHandle=scriptHandle;
     _passiveVisionSensorHandle=passiveVisionSensorHandle;
@@ -36,10 +36,10 @@ CVisionTransf::CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,cons
     _passiveVisionSensorResolution[1]=0;
     simGetVisionSensorResolution(_referencePassiveVisionSensorHandle,_passiveVisionSensorResolution);
     
-    _passiveVisionSensorImage=new float[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]*3];
+    _passiveVisionSensorImage=new double[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]*3];
 
     _mapP=new int[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]];
-    _mapI=new float[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]];
+    _mapI=new double[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]];
     _mapV=new unsigned char[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]];
 
     _calculateMapping();
@@ -131,7 +131,7 @@ bool CVisionTransf::doAllObjectsExistAndAreVisionSensors() const
     return(true);
 }
 
-bool CVisionTransf::isSame(int scriptHandle,const int activeVisionSensorHandles[6],float horizontalAngle,float verticalAngle,int passive1,int passive2) const
+bool CVisionTransf::isSame(int scriptHandle,const int activeVisionSensorHandles[6],double horizontalAngle,double verticalAngle,int passive1,int passive2) const
 {
     if (scriptHandle!=_scriptHandle)
         return(false);
@@ -184,7 +184,7 @@ void CVisionTransf::handleObject()
         for (int i=0;i<6;i++)
         {
             if (_usedActiveVisionSensors[i])
-                _activeVisionSensorImages[i]=simGetVisionSensorImage(_activeVisionSensorHandles[i]);
+                _activeVisionSensorImages[i]=getVisionSensorImage(_activeVisionSensorHandles[i]);
         }
 
         int ptCnt=_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1];
@@ -198,22 +198,22 @@ void CVisionTransf::handleObject()
             _passiveVisionSensorImage[c+1]=_activeVisionSensorImages[v][p+1];
             _passiveVisionSensorImage[c+2]=_activeVisionSensorImages[v][p+2];
         }
-        simSetVisionSensorImage(_passiveVisionSensorHandle,_passiveVisionSensorImage);
+        setVisionSensorImage(_passiveVisionSensorHandle,_passiveVisionSensorImage);
         releaseActiveVisionSensorImages();
     }
 
     // For the depth part:
     if (_passiveVisionSensorHandleForDepth!=-1)
     {
-        float np,fp;
-        simGetObjectFloatParameter(_activeVisionSensorHandles[0],sim_visionfloatparam_near_clipping,&np);
-        simGetObjectFloatParameter(_activeVisionSensorHandles[0],sim_visionfloatparam_far_clipping,&fp);
-        float fmn=fp-np;
+        double np,fp;
+        simGetObjectFloatParam(_activeVisionSensorHandles[0],sim_visionfloatparam_near_clipping,&np);
+        simGetObjectFloatParam(_activeVisionSensorHandles[0],sim_visionfloatparam_far_clipping,&fp);
+        double fmn=fp-np;
 
         for (int i=0;i<6;i++)
         {
             if (_usedActiveVisionSensors[i])
-                _activeVisionSensorImages[i]=simGetVisionSensorDepthBuffer(_activeVisionSensorHandles[i]);
+                _activeVisionSensorImages[i]=getVisionSensorDepth(_activeVisionSensorHandles[i]);
         }
 
         int ptCnt=_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1];
@@ -223,14 +223,14 @@ void CVisionTransf::handleObject()
             p=_mapP[i];
             v=_mapV[i];
 
-            float d=(np+fmn*_activeVisionSensorImages[v][p])*_mapI[i];
+            double d=(np+fmn*_activeVisionSensorImages[v][p])*_mapI[i];
             d=(d-np)/fmn;
             if (d>1.0f)
                 d=1.0f;
 
             _passiveVisionSensorImage[i]=d;
         }
-        simSetVisionSensorImage(_passiveVisionSensorHandleForDepth+sim_handleflag_greyscale,_passiveVisionSensorImage);
+        setVisionSensorImage(_passiveVisionSensorHandleForDepth,_passiveVisionSensorImage,true);
         releaseActiveVisionSensorImages();
     }
 }
@@ -241,7 +241,7 @@ void CVisionTransf::disableSpecularLightComponent(bool d)
     if (d)
         v=4;
     for (int i=0;i<6;i++)
-        simSetObjectIntParameter(_activeVisionSensorHandles[i],1006,v);
+        simSetObjectInt32Param(_activeVisionSensorHandles[i],1006,v);
 }
 
 
@@ -250,10 +250,10 @@ void CVisionTransf::_calculateMapping()
     for (int i=0;i<6;i++)
         _usedActiveVisionSensors[i]=false;
 
-    float halfAngleX=_horizontalAngle/2.0f;
-    float halfAngleY=_verticalAngle/2.0f;
-    float dx=0.0f;
-    float dy=0.0f;
+    double halfAngleX=_horizontalAngle/2.0f;
+    double halfAngleY=_verticalAngle/2.0f;
+    double dx=0.0f;
+    double dy=0.0f;
     if (_passiveVisionSensorResolution[0]>1)
         dx=_horizontalAngle/(_passiveVisionSensorResolution[0]-1);
     else
@@ -268,14 +268,14 @@ void CVisionTransf::_calculateMapping()
         {
             int cnt=(i+j*_passiveVisionSensorResolution[0]);
             
-            float angleX=-halfAngleX+i*dx;
-            float angleY=-halfAngleY+j*dy;
+            double angleX=-halfAngleX+i*dx;
+            double angleY=-halfAngleY+j*dy;
             
-            float x=cos(angleX)*cos(angleY);
-            float y=sin(angleX)*cos(angleY);
-            float z=sin(angleY);
+            double x=cos(angleX)*cos(angleY);
+            double y=sin(angleX)*cos(angleY);
+            double z=sin(angleY);
 
-            float maxV=fabs(x);
+            double maxV=fabs(x);
             if (fabs(y)>maxV)
                 maxV=fabs(y);
             if (fabs(z)>maxV)
@@ -308,7 +308,7 @@ void CVisionTransf::_calculateMapping()
                     imgIndex=3;
             }
 
-            float xl,yl;
+            double xl,yl;
             if (imgIndex==0)
             { // front
                 xl=-y;
@@ -340,8 +340,8 @@ void CVisionTransf::_calculateMapping()
                 yl=z;
             }
 
-            int pixelX=int((xl+1.0)*0.5f*float(_activeVisionSensorResolutionXY)-0.5f);
-            int pixelY=int((yl+1.0)*0.5f*float(_activeVisionSensorResolutionXY)-0.5f);
+            int pixelX=int((xl+1.0)*0.5f*double(_activeVisionSensorResolutionXY)-0.5f);
+            int pixelY=int((yl+1.0)*0.5f*double(_activeVisionSensorResolutionXY)-0.5f);
 
             _mapP[cnt]=pixelX+pixelY*_activeVisionSensorResolutionXY;
             _mapV[cnt]=imgIndex;

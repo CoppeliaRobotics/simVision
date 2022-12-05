@@ -5,35 +5,35 @@
 class CVisionVelodyneHDL64E  
 {
 public:
-    CVisionVelodyneHDL64E(int scriptHandle,const int visionSensorHandles[4],float frequency,int options,float pointSize,float _coloringDistances[2],float scalingFactor,int newPointCloudHandle);
+    CVisionVelodyneHDL64E(int scriptHandle,const int visionSensorHandles[4],double frequency,int options,double pointSize,double _coloringDistances[2],double scalingFactor,int newPointCloudHandle);
     virtual ~CVisionVelodyneHDL64E();
 
     int getVelodyneHandle() const;
     int getRelatedScriptHandle() const;
     bool areVisionSensorsExplicitelyHandled() const;
     bool doAllObjectsExistAndAreVisionSensors() const;
-    bool handle(float dt,std::vector<float>& pts,bool getAbsPts,std::vector<unsigned char>& retCols);
+    bool handle(double dt,std::vector<double>& pts,bool getAbsPts,std::vector<unsigned char>& retCols);
 
 private:
-    void _removePointsBetween(float lowAngle,float range);
-    void _getColorFromIntensity(float intensity,unsigned char col[3]);
+    void _removePointsBetween(double lowAngle,double range);
+    void _getColorFromIntensity(double intensity,unsigned char col[3]);
 
     int _scriptHandle;
     int _visionSensorHandles[4];
-    float _frequency;
+    double _frequency;
     int _velodyneHandle;
-    float _displayScalingFactor;
-    float _pointSize;
+    double _displayScalingFactor;
+    double _pointSize;
     bool _displayPts;
     bool _emissivePts;
     bool _displayOnlyCurrent;
     bool _cartesianCoords;
     int _ptCloudHandle;
     int _newPtCloudHandle;
-    float lastScanAngle;
-    float _coloringDistances[2];
-    std::vector<float> _displayPtsXyz;
-    std::vector<float> _displayPtsA;
+    double lastScanAngle;
+    double _coloringDistances[2];
+    std::vector<double> _displayPtsXyz;
+    std::vector<double> _displayPtsA;
     std::vector<unsigned char> _displayPtsCol;
 
     static int _nextVelodyneHandle;

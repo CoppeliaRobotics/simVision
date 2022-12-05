@@ -5,6 +5,7 @@ TARGET = simExtVision
 TEMPLATE = lib
 
 DEFINES -= UNICODE
+DEFINES += SIM_MATH_DOUBLE # for double-precision
 DEFINES += QT_COMPIL
 CONFIG += shared plugin
 INCLUDEPATH += "../include"
@@ -72,6 +73,7 @@ SOURCES += \
 
 HEADERS +=\
     simExtVision.h \
+    vis.h \
     visionCont.h \
     visionTransf.h \
     visionTransfCont.h \
