@@ -41,7 +41,7 @@ coppeliasim_add_plugin(
     ${COPPELIASIM_COMMON_DIR}/scriptFunctionData.cpp
     ${COPPELIASIM_COMMON_DIR}/scriptFunctionDataItem.cpp
 )
-target_compile_definitions(simExtQHull PRIVATE SIM_MATH_DOUBLE)
+target_compile_definitions(simExtVision PRIVATE SIM_MATH_DOUBLE)
 target_include_directories(simExtVision PRIVATE ${COPPELIASIM_ROOT_DIR}/programming/simMath)
 coppeliasim_add_helpfile(simVision.htm)
 coppeliasim_add_helpfile(simVision.json SUBDIR index)
