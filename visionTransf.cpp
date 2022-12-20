@@ -34,7 +34,7 @@ CVisionTransf::CVisionTransf(int scriptHandle,int passiveVisionSensorHandle,cons
 
     _passiveVisionSensorResolution[0]=0;
     _passiveVisionSensorResolution[1]=0;
-    simGetVisionSensorResolution(_referencePassiveVisionSensorHandle,_passiveVisionSensorResolution);
+    simGetVisionSensorRes(_referencePassiveVisionSensorHandle,_passiveVisionSensorResolution);
     
     _passiveVisionSensorImage=new double[_passiveVisionSensorResolution[0]*_passiveVisionSensorResolution[1]*3];
 
@@ -66,7 +66,7 @@ bool CVisionTransf::isActiveVisionSensorResolutionCorrect()
     for (int i=0;i<6;i++)
     {
         int r[2];
-        if (simGetVisionSensorResolution(_activeVisionSensorHandles[i],r)==-1)
+        if (simGetVisionSensorRes(_activeVisionSensorHandles[i],r)==-1)
             return(false);
         if (res==-1)
             res=r[0];
@@ -82,7 +82,7 @@ bool CVisionTransf::areRGBAndDepthVisionSensorResolutionsCorrect() const
     if (_passiveVisionSensorHandle!=-1)
     {
         int r[2];
-        if (simGetVisionSensorResolution(_passiveVisionSensorHandle,r)==-1)
+        if (simGetVisionSensorRes(_passiveVisionSensorHandle,r)==-1)
             return(false);
         if ((_passiveVisionSensorResolution[0]!=r[0])||(_passiveVisionSensorResolution[1]!=r[1]))
             return(false);
@@ -90,7 +90,7 @@ bool CVisionTransf::areRGBAndDepthVisionSensorResolutionsCorrect() const
     if (_passiveVisionSensorHandleForDepth!=-1)
     {
         int r[2];
-        if (simGetVisionSensorResolution(_passiveVisionSensorHandleForDepth,r)==-1)
+        if (simGetVisionSensorRes(_passiveVisionSensorHandleForDepth,r)==-1)
             return(false);
         if ((_passiveVisionSensorResolution[0]!=r[0])||(_passiveVisionSensorResolution[1]!=r[1]))
             return(false);
@@ -149,7 +149,7 @@ bool CVisionTransf::isSame(int scriptHandle,const int activeVisionSensorHandles[
     if (passive2!=_passiveVisionSensorHandleForDepth)
         return(false);
     int r[2]={0,0};
-    simGetVisionSensorResolution(_referencePassiveVisionSensorHandle,r);
+    simGetVisionSensorRes(_referencePassiveVisionSensorHandle,r);
     if ((r[0]!=_passiveVisionSensorResolution[0])||(r[1]!=_passiveVisionSensorResolution[1]))
         return(false);
     return(true);

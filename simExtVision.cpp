@@ -78,7 +78,7 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
         if (simGetObjectType(visionSensorHandle)==sim_object_visionsensor_type)
         {
             int r[2];
-            simGetVisionSensorResolution(visionSensorHandle,r);
+            simGetVisionSensorRes(visionSensorHandle,r);
             CVisionRemap* obj=nullptr;
             if (inData->size()>=2)
             {
@@ -251,11 +251,11 @@ void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
         if (existAndAreVisionSensors)
         { // check the sensor resolutions:
             int r[2];
-            simGetVisionSensorResolution(passiveVisionSensorHande,r);
+            simGetVisionSensorRes(passiveVisionSensorHande,r);
             int rl[2];
-            simGetVisionSensorResolution(leftSensorHandle,rl);
+            simGetVisionSensorRes(leftSensorHandle,rl);
             int rr[2];
-            simGetVisionSensorResolution(rightSensorHandle,rr);
+            simGetVisionSensorRes(rightSensorHandle,rr);
             if ((r[0]==rl[0])&&(r[0]==rr[0])&&(r[1]==rl[1])&&(r[1]==rr[1]))
             { // check if the sensors are explicitely handled:
                 int e=simGetExplicitHandling(passiveVisionSensorHande);
@@ -665,7 +665,7 @@ void LUA_SENSORIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
         if (img!=nullptr)
         {
             int res[2];
-            simGetVisionSensorResolution(handle,res);
+            simGetVisionSensorRes(handle,res);
             CVisionSensorData* imgData=visionContainer->getImageObject(handle);
             if (imgData==nullptr)
             {
@@ -730,7 +730,7 @@ void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
         if (img!=nullptr)
         {
             int res[2];
-            simGetVisionSensorResolution(handle,res);
+            simGetVisionSensorRes(handle,res);
             CVisionSensorData* imgData=visionContainer->getImageObject(handle);
             if (imgData==nullptr)
             {
@@ -803,7 +803,7 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             int res[2];
-            simGetVisionSensorResolution(handle,res);
+            simGetVisionSensorRes(handle,res);
             if ( (imgData->resolution[0]==res[0])&&(imgData->resolution[1]==res[1]) )
                 setVisionSensorImage(handle,imgData->workImg);
             else
@@ -845,7 +845,7 @@ void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
         if (imgData!=nullptr)
         {
             int res[2];
-            simGetVisionSensorResolution(handle,res);
+            simGetVisionSensorRes(handle,res);
             if ( (imgData->resolution[0]==res[0])&&(imgData->resolution[1]==res[1]) )
             {
                 double* tmpDepthMap=new double[res[0]*res[1]];

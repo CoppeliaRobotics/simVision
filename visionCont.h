@@ -37,7 +37,7 @@ class CVisionSensorData
     {
         _sensorHandle=sensorHandle;
         _scriptHandle=scriptHandle;
-        simGetVisionSensorResolution(_sensorHandle,resolution);
+        simGetVisionSensorRes(_sensorHandle,resolution);
     }
 
     int resolution[2];

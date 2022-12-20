@@ -9,7 +9,7 @@ CVisionRemap::CVisionRemap(int scriptHandle,int sensorHandle,const int* map,cons
     _scriptHandle=scriptHandle;
     _sensorHandle=sensorHandle;
     int r[2];
-    simGetVisionSensorResolution(_sensorHandle,r);
+    simGetVisionSensorRes(_sensorHandle,r);
     _pixelCount=r[0]*r[1];
     _sensorImage=new double[_pixelCount*3];
     _mapP=new int[_pixelCount];
@@ -41,7 +41,7 @@ bool CVisionRemap::isSame(int scriptHandle,const int* map,const double* scalings
     if (scriptHandle!=_scriptHandle)
         return(false);
     int r[2]={0,0};
-    simGetVisionSensorResolution(_sensorHandle,r);
+    simGetVisionSensorRes(_sensorHandle,r);
     if (r[0]*r[1]!=_pixelCount)
         return(false);
     for (int i=0;i<_pixelCount;i++)
