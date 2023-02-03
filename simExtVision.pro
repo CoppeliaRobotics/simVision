@@ -9,7 +9,6 @@ DEFINES += SIM_MATH_DOUBLE # for double-precision
 DEFINES += QT_COMPIL
 CONFIG += shared plugin
 INCLUDEPATH += "../include"
-INCLUDEPATH += "../simMath"
 
 *-msvc* {
     QMAKE_CXXFLAGS += -O2
@@ -60,16 +59,16 @@ SOURCES += \
     visionVelodyneVPL16.cpp \
     visionVelodyneVPL16Cont.cpp \
     imageProcess.cpp \
-    ../common/scriptFunctionData.cpp \
-    ../common/scriptFunctionDataItem.cpp \
-    ../common/simLib.cpp \
-    ../simMath/MyMath.cpp \
-    ../simMath/3Vector.cpp \
-    ../simMath/4Vector.cpp \
-    ../simMath/7Vector.cpp \
-    ../simMath/3X3Matrix.cpp \
-    ../simMath/4X4Matrix.cpp \
-    ../simMath/MMatrix.cpp \
+    ../include/scriptFunctionData.cpp \
+    ../include/scriptFunctionDataItem.cpp \
+    ../include/simLib.cpp \
+    ../include/simMath/MyMath.cpp \
+    ../include/simMath/3Vector.cpp \
+    ../include/simMath/4Vector.cpp \
+    ../include/simMath/7Vector.cpp \
+    ../include/simMath/3X3Matrix.cpp \
+    ../include/simMath/4X4Matrix.cpp \
+    ../include/simMath/MMatrix.cpp \
 
 HEADERS +=\
     simExtVision.h \
@@ -87,14 +86,14 @@ HEADERS +=\
     ../include/scriptFunctionData.h \
     ../include/scriptFunctionDataItem.h \
     ../include/simLib.h \
-    ../simMath/MyMath.h \
-    ../simMath/mathDefines.h \
-    ../simMath/3Vector.h \
-    ../simMath/4Vector.h \
-    ../simMath/7Vector.h \
-    ../simMath/3X3Matrix.h \
-    ../simMath/4X4Matrix.h \
-    ../simMath/MMatrix.h \
+    ../include/simMath/MyMath.h \
+    ../include/simMath/mathDefines.h \
+    ../include/simMath/3Vector.h \
+    ../include/simMath/4Vector.h \
+    ../include/simMath/7Vector.h \
+    ../include/simMath/3X3Matrix.h \
+    ../include/simMath/4X4Matrix.h \
+    ../include/simMath/MMatrix.h \
 
 unix:!symbian {
     maemo5 {

@@ -1,5 +1,5 @@
 #include "visionVelodyneHDL64ECont.h"
-#include "simLib.h"
+#include <simLib.h>
 
 CVisionVelodyneHDL64ECont::CVisionVelodyneHDL64ECont()
 {

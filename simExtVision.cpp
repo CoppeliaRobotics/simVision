@@ -1,5 +1,5 @@
 #include "simExtVision.h"
-#include "scriptFunctionData.h"
+#include <scriptFunctionData.h>
 #include "vis.h"
 #include <iostream>
 #include "visionCont.h"
@@ -8,7 +8,7 @@
 #include "visionVelodyneHDL64ECont.h"
 #include "visionVelodyneVPL16Cont.h"
 #include "imageProcess.h"
-#include "7Vector.h"
+#include <simMath/7Vector.h>
 #include <map>
 #include <algorithm>
 
