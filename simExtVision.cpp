@@ -1,5 +1,5 @@
 #include "simExtVision.h"
-#include <scriptFunctionData.h>
+#include <simLib/scriptFunctionData.h>
 #include "vis.h"
 #include <iostream>
 #include "visionCont.h"

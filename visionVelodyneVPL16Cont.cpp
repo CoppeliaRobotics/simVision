@@ -1,5 +1,5 @@
 #include "visionVelodyneVPL16Cont.h"
-#include <simLib.h>
+#include <simLib/simLib.h>
 
 CVisionVelodyneVPL16Cont::CVisionVelodyneVPL16Cont()
 {

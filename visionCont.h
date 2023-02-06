@@ -1,6 +1,6 @@
 #pragma once
 
-#include <simLib.h>
+#include <simLib/simLib.h>
 #include <vector>
 
 class CVisionSensorData
