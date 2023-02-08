@@ -59,9 +59,9 @@ SOURCES += \
     visionVelodyneVPL16.cpp \
     visionVelodyneVPL16Cont.cpp \
     imageProcess.cpp \
-    ../include/scriptFunctionData.cpp \
-    ../include/scriptFunctionDataItem.cpp \
-    ../include/simLib.cpp \
+    ../include/simLib/scriptFunctionData.cpp \
+    ../include/simLib/scriptFunctionDataItem.cpp \
+    ../include/simLib/simLib.cpp \
     ../include/simMath/MyMath.cpp \
     ../include/simMath/3Vector.cpp \
     ../include/simMath/4Vector.cpp \
@@ -83,9 +83,9 @@ HEADERS +=\
     visionVelodyneVPL16.h \
     visionVelodyneVPL16Cont.h \
     imageProcess.h \
-    ../include/scriptFunctionData.h \
-    ../include/scriptFunctionDataItem.h \
-    ../include/simLib.h \
+    ../include/simLib/scriptFunctionData.h \
+    ../include/simLib/scriptFunctionDataItem.h \
+    ../include/simLib/simLib.h \
     ../include/simMath/MyMath.h \
     ../include/simMath/mathDefines.h \
     ../include/simMath/3Vector.h \
