@@ -1,7 +1,7 @@
 QT -= core
 QT -= gui
 
-TARGET = simExtVision
+TARGET = simVision
 TEMPLATE = lib
 
 DEFINES -= UNICODE
@@ -49,7 +49,7 @@ unix:!macx {
 }
 
 SOURCES += \
-    simExtVision.cpp \
+    simVision.cpp \
     visionCont.cpp \
     visionTransf.cpp \
     visionTransfCont.cpp \
@@ -72,7 +72,7 @@ SOURCES += \
     ../include/simMath/mXnMatrix.cpp \
 
 HEADERS +=\
-    simExtVision.h \
+    simVision.h \
     vis.h \
     visionCont.h \
     visionTransf.h \

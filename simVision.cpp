@@ -1,4 +1,4 @@
-#include "simExtVision.h"
+#include "simVision.h"
 #include <simLib/scriptFunctionData.h>
 #include "vis.h"
 #include <iostream>
@@ -24,41 +24,18 @@
     #include <unistd.h>
 #endif
 
-#define CONCAT(x,y,z) x y z
-#define strConCat(x,y,z)    CONCAT(x,y,z)
-
 static LIBRARY simLib;
 static CVisionCont* visionContainer;
 static CVisionTransfCont* visionTransfContainer;
 static CVisionRemapCont* visionRemapContainer;
 static CVisionVelodyneHDL64ECont* visionVelodyneHDL64EContainer;
 static CVisionVelodyneVPL16Cont* visionVelodyneVPL16Container;
-
-
-// Following few for backward compatibility:
-#define LUA_HANDLESPHERICAL_COMMANDOLD_PLUGIN "simExtVision_handleSpherical@Vision"
-#define LUA_HANDLESPHERICAL_COMMANDOLD "simExtVision_handleSpherical"
-#define LUA_HANDLEANAGLYPHSTEREO_COMMANDOLD_PLUGIN "simExtVision_handleAnaglyphStereo@Vision"
-#define LUA_HANDLEANAGLYPHSTEREO_COMMANDOLD "simExtVision_handleAnaglyphStereo"
-#define LUA_CREATEVELODYNEHDL64E_COMMANDOLD_PLUGIN "simExtVision_createVelodyneHDL64E@Vision"
-#define LUA_CREATEVELODYNEHDL64E_COMMANDOLD "simExtVision_createVelodyneHDL64E"
-#define LUA_DESTROYVELODYNEHDL64E_COMMANDOLD_PLUGIN "simExtVision_destroyVelodyneHDL64E@Vision"
-#define LUA_DESTROYVELODYNEHDL64E_COMMANDOLD "simExtVision_destroyVelodyneHDL64E"
-#define LUA_HANDLEVELODYNEHDL64E_COMMANDOLD_PLUGIN "simExtVision_handleVelodyneHDL64E@Vision"
-#define LUA_HANDLEVELODYNEHDL64E_COMMANDOLD "simExtVision_handleVelodyneHDL64E"
-#define LUA_CREATEVELODYNEVPL16_COMMANDOLD_PLUGIN "simExtVision_createVelodyneVPL16@Vision"
-#define LUA_CREATEVELODYNEVPL16_COMMANDOLD "simExtVision_createVelodyneVPL16"
-#define LUA_DESTROYVELODYNEVPL16_COMMANDOLD_PLUGIN "simExtVision_destroyVelodyneVPL16@Vision"
-#define LUA_DESTROYVELODYNEVPL16_COMMANDOLD "simExtVision_destroyVelodyneVPL16"
-#define LUA_HANDLEVELODYNEVPL16_COMMANDOLD_PLUGIN "simExtVision_handleVelodyneVPL16@Vision"
-#define LUA_HANDLEVELODYNEVPL16_COMMANDOLD "simExtVision_handleVelodyneVPL16"
-
+static std::string _pluginName;
 
 // --------------------------------------------------------------------------------------
 // simVision.Distort
 // --------------------------------------------------------------------------------------
-#define LUA_DISTORT_COMMAND_PLUGIN "simVision.distort@Vision"
-#define LUA_DISTORT_COMMAND "simVision.distort"
+#define LUA_DISTORT_COMMAND_PLUGIN "distort"
 
 const int inArgs_DISTORT[]={
     3,
@@ -71,7 +48,7 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     int result=-1;
-    if (D.readDataFromStack(p->stackID,inArgs_DISTORT,inArgs_DISTORT[0]-2,LUA_DISTORT_COMMAND)) // last 2 args are optional
+    if (D.readDataFromStack(p->stackID,inArgs_DISTORT,inArgs_DISTORT[0]-2,nullptr)) // last 2 args are optional
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int visionSensorHandle=inData->at(0).int32Data[0];
@@ -105,7 +82,7 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
                             obj=nullptr;
                         }
                         else
-                            simSetLastError(strConCat("warning@",LUA_DISTORT_COMMAND,""),"Mapping was already initialized, constantly handing over mapping arguments will slow down operation."); // output an error
+                            simAddLog(_pluginName.c_str(),sim_verbosity_scriptwarnings,"Mapping was already initialized, constantly handing over mapping arguments will slow down operation.");
                     }
                     if (obj==nullptr)
                     {
@@ -114,13 +91,13 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
                     }
                 }
                 else
-                    simSetLastError(LUA_DISTORT_COMMAND,"Invalid argument(s)."); // output an error
+                    simSetLastError(nullptr,"Invalid argument(s)."); // output an error
             }
             else
             {
                 obj=visionRemapContainer->getObjectFromSensorHandle(visionSensorHandle);
                 if (obj==nullptr)
-                    simSetLastError(LUA_DISTORT_COMMAND,"Mapping was not yet initialized."); // output an error
+                    simSetLastError(nullptr,"Mapping was not yet initialized."); // output an error
             }
             if (obj!=nullptr)
             {
@@ -129,7 +106,7 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_DISTORT_COMMAND,"Invalid vision sensor handle."); // output an error
+            simSetLastError(nullptr,"Invalid vision sensor handle."); // output an error
     }
     D.pushOutData(CScriptFunctionDataItem(result));
     D.writeDataToStack(p->stackID);
@@ -139,8 +116,7 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.handleSpherical
 // --------------------------------------------------------------------------------------
-#define LUA_HANDLESPHERICAL_COMMAND_PLUGIN "simVision.handleSpherical@Vision"
-#define LUA_HANDLESPHERICAL_COMMAND "simVision.handleSpherical"
+#define LUA_HANDLESPHERICAL_COMMAND_PLUGIN "handleSpherical"
 
 const int inArgs_HANDLESPHERICAL[]={
     5,
@@ -155,7 +131,7 @@ void LUA_HANDLESPHERICAL_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     int result=-1;
-    if (D.readDataFromStack(p->stackID,inArgs_HANDLESPHERICAL,inArgs_HANDLESPHERICAL[0]-1,LUA_HANDLESPHERICAL_COMMAND)) // last arg is optional
+    if (D.readDataFromStack(p->stackID,inArgs_HANDLESPHERICAL,inArgs_HANDLESPHERICAL[0]-1,nullptr)) // last arg is optional
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int passiveVisionSensorHandle=inData->at(0).int32Data[0];
@@ -192,7 +168,7 @@ void LUA_HANDLESPHERICAL_CALLBACK(SScriptCallBack* p)
                 if (obj->areActiveVisionSensorsExplicitelyHandled())
                 {
                     if (!obj->areRGBAndDepthVisionSensorResolutionsCorrect())
-                        simSetLastError(LUA_HANDLESPHERICAL_COMMAND,"Invalid vision sensor resolution for the RGB or depth component."); // output an error
+                        simSetLastError(nullptr,"Invalid vision sensor resolution for the RGB or depth component."); // output an error
                     else
                     {
                         obj->handleObject();
@@ -200,13 +176,13 @@ void LUA_HANDLESPHERICAL_CALLBACK(SScriptCallBack* p)
                     }
                 }
                 else
-                    simSetLastError(LUA_HANDLESPHERICAL_COMMAND,"Active vision sensors should be explicitely handled."); // output an error
+                    simSetLastError(nullptr,"Active vision sensors should be explicitely handled."); // output an error
             }
             else
-                simSetLastError(LUA_HANDLESPHERICAL_COMMAND,"Invalid vision sensor resolutions."); // output an error
+                simSetLastError(nullptr,"Invalid vision sensor resolutions."); // output an error
         }
         else
-            simSetLastError(LUA_HANDLESPHERICAL_COMMAND,"Invalid handles, or handles are not vision sensor handles."); // output an error
+            simSetLastError(nullptr,"Invalid handles, or handles are not vision sensor handles."); // output an error
 
         if (result==-1)
             visionTransfContainer->removeObjectFromPassiveSensorHandle(h);
@@ -220,8 +196,7 @@ void LUA_HANDLESPHERICAL_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.handleAnaglyphStereo
 // --------------------------------------------------------------------------------------
-#define LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN "simVision.handleAnaglyphStereo@Vision"
-#define LUA_HANDLEANAGLYPHSTEREO_COMMAND "simVision.handleAnaglyphStereo"
+#define LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN "handleAnaglyphStereo"
 
 const int inArgs_HANDLEANAGLYPHSTEREO[]={
     3,
@@ -234,7 +209,7 @@ void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     int result=-1;
-    if (D.readDataFromStack(p->stackID,inArgs_HANDLEANAGLYPHSTEREO,inArgs_HANDLEANAGLYPHSTEREO[0]-1,LUA_HANDLEANAGLYPHSTEREO_COMMAND)) // -1 because last arg is optional
+    if (D.readDataFromStack(p->stackID,inArgs_HANDLEANAGLYPHSTEREO,inArgs_HANDLEANAGLYPHSTEREO[0]-1,nullptr)) // -1 because last arg is optional
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int passiveVisionSensorHande=inData->at(0).int32Data[0];
@@ -287,13 +262,13 @@ void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
                     result=1;
                 }
                 else
-                    simSetLastError(LUA_HANDLEANAGLYPHSTEREO_COMMAND,"Vision sensors should be explicitely handled."); // output an error
+                    simSetLastError(nullptr,"Vision sensors should be explicitely handled."); // output an error
             }
             else
-                simSetLastError(LUA_HANDLEANAGLYPHSTEREO_COMMAND,"Invalid vision sensor resolutions."); // output an error
+                simSetLastError(nullptr,"Invalid vision sensor resolutions."); // output an error
         }
         else
-            simSetLastError(LUA_HANDLEANAGLYPHSTEREO_COMMAND,"Invalid handles, or handles are not vision sensor handles."); // output an error
+            simSetLastError(nullptr,"Invalid handles, or handles are not vision sensor handles."); // output an error
     }
     D.pushOutData(CScriptFunctionDataItem(result));
     D.writeDataToStack(p->stackID);
@@ -303,8 +278,7 @@ void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.createVelodyneHDL64E
 // --------------------------------------------------------------------------------------
-#define LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN "simVision.createVelodyneHDL64E@Vision"
-#define LUA_CREATEVELODYNEHDL64E_COMMAND "simVision.createVelodyneHDL64E"
+#define LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN "createVelodyneHDL64E"
 
 const int inArgs_CREATEVELODYNEHDL64E[]={
     7,
@@ -321,7 +295,7 @@ void LUA_CREATEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     int velodyneHandle=-1;
-    if (D.readDataFromStack(p->stackID,inArgs_CREATEVELODYNEHDL64E,inArgs_CREATEVELODYNEHDL64E[0]-5,LUA_CREATEVELODYNEHDL64E_COMMAND)) // -5 because the last 5 arguments are optional
+    if (D.readDataFromStack(p->stackID,inArgs_CREATEVELODYNEHDL64E,inArgs_CREATEVELODYNEHDL64E[0]-5,nullptr)) // -5 because the last 5 arguments are optional
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int options=0;
@@ -361,10 +335,10 @@ void LUA_CREATEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
             if (obj->areVisionSensorsExplicitelyHandled())
                 velodyneHandle=obj->getVelodyneHandle(); // success
             else
-                simSetLastError(LUA_CREATEVELODYNEHDL64E_COMMAND,"Vision sensors should be explicitely handled."); // output an error
+                simSetLastError(nullptr,"Vision sensors should be explicitely handled."); // output an error
         }
         else
-            simSetLastError(LUA_CREATEVELODYNEHDL64E_COMMAND,"Invalid handles, or handles are not vision sensor handles."); // output an error
+            simSetLastError(nullptr,"Invalid handles, or handles are not vision sensor handles."); // output an error
 
         if (velodyneHandle==-1)
             visionVelodyneHDL64EContainer->removeObjectFromSensorHandle(obj->getVelodyneHandle());
@@ -377,8 +351,7 @@ void LUA_CREATEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.destroyVelodyneHDL64E
 // --------------------------------------------------------------------------------------
-#define LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN "simVision.destroyVelodyneHDL64E@Vision"
-#define LUA_DESTROYVELODYNEHDL64E_COMMAND "simVision.destroyVelodyneHDL64E"
+#define LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN "destroyVelodyneHDL64E"
 
 const int inArgs_DESTROYVELODYNEHDL64E[]={
     1,
@@ -389,7 +362,7 @@ void LUA_DESTROYVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     int result=-1;
-    if (D.readDataFromStack(p->stackID,inArgs_DESTROYVELODYNEHDL64E,inArgs_DESTROYVELODYNEHDL64E[0],LUA_DESTROYVELODYNEHDL64E_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_DESTROYVELODYNEHDL64E,inArgs_DESTROYVELODYNEHDL64E[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=inData->at(0).int32Data[0];
@@ -400,7 +373,7 @@ void LUA_DESTROYVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
             result=1;
         }
         else
-            simSetLastError(LUA_DESTROYVELODYNEHDL64E_COMMAND,"Invalid handle."); // output an error
+            simSetLastError(nullptr,"Invalid handle."); // output an error
     }
     D.pushOutData(CScriptFunctionDataItem(result));
     D.writeDataToStack(p->stackID);
@@ -410,8 +383,7 @@ void LUA_DESTROYVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.handleVelodyneHDL64E
 // --------------------------------------------------------------------------------------
-#define LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN "simVision.handleVelodyneHDL64E@Vision"
-#define LUA_HANDLEVELODYNEHDL64E_COMMAND "simVision.handleVelodyneHDL64E"
+#define LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN "handleVelodyneHDL64E"
 
 const int inArgs_HANDLEVELODYNEHDL64E[]={
     2,
@@ -426,7 +398,7 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
     std::vector<unsigned char> cols;
     bool result=false;
     bool codedString=false;
-    if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEHDL64E,inArgs_HANDLEVELODYNEHDL64E[0],LUA_HANDLEVELODYNEHDL64E_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEHDL64E,inArgs_HANDLEVELODYNEHDL64E[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=inData->at(0).int32Data[0];
@@ -442,7 +414,7 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
         if (obj!=NULL)
             result=obj->handle(dt,pts,absCoords,cols);
         else
-            simSetLastError(LUA_HANDLEVELODYNEHDL64E_COMMAND,"Invalid handle."); // output an error
+            simSetLastError(nullptr,"Invalid handle."); // output an error
     }
     if (result)
     {
@@ -471,8 +443,7 @@ void LUA_HANDLEVELODYNEHDL64E_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.createVelodyneVPL16
 // --------------------------------------------------------------------------------------
-#define LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN "simVision.createVelodyneVPL16@Vision"
-#define LUA_CREATEVELODYNEVPL16_COMMAND "simVision.createVelodyneVPL16"
+#define LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN "createVelodyneVPL16"
 
 const int inArgs_CREATEVELODYNEVPL16[]={
     7,
@@ -489,7 +460,7 @@ void LUA_CREATEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     int velodyneHandle=-1;
-    if (D.readDataFromStack(p->stackID,inArgs_CREATEVELODYNEVPL16,inArgs_CREATEVELODYNEVPL16[0]-5,LUA_CREATEVELODYNEVPL16_COMMAND)) // -5 because the last 5 arguments are optional
+    if (D.readDataFromStack(p->stackID,inArgs_CREATEVELODYNEVPL16,inArgs_CREATEVELODYNEVPL16[0]-5,nullptr)) // -5 because the last 5 arguments are optional
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int options=0;
@@ -529,10 +500,10 @@ void LUA_CREATEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
             if (obj->areVisionSensorsExplicitelyHandled())
                 velodyneHandle=obj->getVelodyneHandle(); // success
             else
-                simSetLastError(LUA_CREATEVELODYNEVPL16_COMMAND,"Vision sensors should be explicitely handled."); // output an error
+                simSetLastError(nullptr,"Vision sensors should be explicitely handled."); // output an error
         }
         else
-            simSetLastError(LUA_CREATEVELODYNEVPL16_COMMAND,"Invalid handles, or handles are not vision sensor handles."); // output an error
+            simSetLastError(nullptr,"Invalid handles, or handles are not vision sensor handles."); // output an error
 
         if (velodyneHandle==-1)
             visionVelodyneVPL16Container->removeObjectFromSensorHandle(obj->getVelodyneHandle());
@@ -545,8 +516,7 @@ void LUA_CREATEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.destroyVelodyneVPL16
 // --------------------------------------------------------------------------------------
-#define LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN "simVision.destroyVelodyneVPL16@Vision"
-#define LUA_DESTROYVELODYNEVPL16_COMMAND "simVision.destroyVelodyneVPL16"
+#define LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN "destroyVelodyneVPL16"
 
 const int inArgs_DESTROYVELODYNEVPL16[]={
     1,
@@ -557,7 +527,7 @@ void LUA_DESTROYVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     int result=-1;
-    if (D.readDataFromStack(p->stackID,inArgs_DESTROYVELODYNEVPL16,inArgs_DESTROYVELODYNEVPL16[0],LUA_DESTROYVELODYNEVPL16_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_DESTROYVELODYNEVPL16,inArgs_DESTROYVELODYNEVPL16[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=inData->at(0).int32Data[0];
@@ -568,7 +538,7 @@ void LUA_DESTROYVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
             result=1;
         }
         else
-            simSetLastError(LUA_DESTROYVELODYNEVPL16_COMMAND,"Invalid handle."); // output an error
+            simSetLastError(nullptr,"Invalid handle."); // output an error
     }
     D.pushOutData(CScriptFunctionDataItem(result));
     D.writeDataToStack(p->stackID);
@@ -578,8 +548,7 @@ void LUA_DESTROYVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.handleVelodyneVPL16
 // --------------------------------------------------------------------------------------
-#define LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN "simVision.handleVelodyneVPL16@Vision"
-#define LUA_HANDLEVELODYNEVPL16_COMMAND "simVision.handleVelodyneVPL16"
+#define LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN "handleVelodyneVPL16"
 
 const int inArgs_HANDLEVELODYNEVPL16[]={
     2,
@@ -594,7 +563,7 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
     std::vector<unsigned char> cols;
     bool result=false;
     bool codedString=false;
-    if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEVPL16,inArgs_HANDLEVELODYNEVPL16[0],LUA_HANDLEVELODYNEVPL16_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_HANDLEVELODYNEVPL16,inArgs_HANDLEVELODYNEVPL16[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=inData->at(0).int32Data[0];
@@ -610,7 +579,7 @@ void LUA_HANDLEVELODYNEVPL16_CALLBACK(SScriptCallBack* p)
         if (obj!=NULL)
             result=obj->handle(dt,pts,absCoords,cols);
         else
-            simSetLastError(LUA_HANDLEVELODYNEVPL16_COMMAND,"Invalid handle."); // output an error
+            simSetLastError(nullptr,"Invalid handle."); // output an error
     }
     if (result)
     {
@@ -646,8 +615,7 @@ int getVisionSensorHandle(int handle,int attachedObj)
 // --------------------------------------------------------------------------------------
 // simVision.sensorImgToWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN "simVision.sensorImgToWorkImg@Vision"
-#define LUA_SENSORIMGTOWORKIMG_COMMAND "simVision.sensorImgToWorkImg"
+#define LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN "sensorImgToWorkImg"
 
 const int inArgs_SENSORIMGTOWORKIMG[]={
     1,
@@ -657,7 +625,7 @@ const int inArgs_SENSORIMGTOWORKIMG[]={
 void LUA_SENSORIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SENSORIMGTOWORKIMG,inArgs_SENSORIMGTOWORKIMG[0],LUA_SENSORIMGTOWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SENSORIMGTOWORKIMG,inArgs_SENSORIMGTOWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -701,7 +669,7 @@ void LUA_SENSORIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
             simReleaseBuffer((char*)img);
         }
         else
-            simSetLastError(LUA_SENSORIMGTOWORKIMG_COMMAND,"Invalid handle.");
+            simSetLastError(nullptr,"Invalid handle.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -711,8 +679,7 @@ void LUA_SENSORIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.sensorDepthMapToWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN "simVision.sensorDepthMapToWorkImg@Vision"
-#define LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND "simVision.sensorDepthMapToWorkImg"
+#define LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN "sensorDepthMapToWorkImg"
 
 const int inArgs_SENSORDEPTHMAPTOWORKIMG[]={
     1,
@@ -722,7 +689,7 @@ const int inArgs_SENSORDEPTHMAPTOWORKIMG[]={
 void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SENSORDEPTHMAPTOWORKIMG,inArgs_SENSORDEPTHMAPTOWORKIMG[0],LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SENSORDEPTHMAPTOWORKIMG,inArgs_SENSORDEPTHMAPTOWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -770,7 +737,7 @@ void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
             simReleaseBuffer((char*)img);
         }
         else
-            simSetLastError(LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND,"Invalid handle.");
+            simSetLastError(nullptr,"Invalid handle.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -780,8 +747,7 @@ void LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.workImgToSensorImg
 // --------------------------------------------------------------------------------------
-#define LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN "simVision.workImgToSensorImg@Vision"
-#define LUA_WORKIMGTOSENSORIMG_COMMAND "simVision.workImgToSensorImg"
+#define LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN "workImgToSensorImg"
 
 const int inArgs_WORKIMGTOSENSORIMG[]={
     2,
@@ -792,7 +758,7 @@ const int inArgs_WORKIMGTOSENSORIMG[]={
 void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOSENSORIMG,inArgs_WORKIMGTOSENSORIMG[0]-1,LUA_WORKIMGTOSENSORIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOSENSORIMG,inArgs_WORKIMGTOSENSORIMG[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -807,12 +773,12 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
             if ( (imgData->resolution[0]==res[0])&&(imgData->resolution[1]==res[1]) )
                 setVisionSensorImage(handle,imgData->workImg);
             else
-                simSetLastError(LUA_SENSORIMGTOWORKIMG_COMMAND,"Resolution mismatch.");
+                simSetLastError(nullptr,"Resolution mismatch.");
             if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr)&&removeImg )
                 visionContainer->removeImageObject(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
         }
         else
-            simSetLastError(LUA_WORKIMGTOSENSORIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -822,8 +788,7 @@ void LUA_WORKIMGTOSENSORIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.workImgToSensorDepthMap
 // --------------------------------------------------------------------------------------
-#define LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN "simVision.workImgToSensorDepthMap@Vision"
-#define LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND "simVision.workImgToSensorDepthMap"
+#define LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN "workImgToSensorDepthMap"
 
 const int inArgs_WORKIMGTOSENSORDEPTHMAP[]={
     2,
@@ -834,7 +799,7 @@ const int inArgs_WORKIMGTOSENSORDEPTHMAP[]={
 void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOSENSORDEPTHMAP,inArgs_WORKIMGTOSENSORDEPTHMAP[0]-1,LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOSENSORDEPTHMAP,inArgs_WORKIMGTOSENSORDEPTHMAP[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -855,12 +820,12 @@ void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
                 delete[] tmpDepthMap;
             }
             else
-                simSetLastError(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"Resolution mismatch.");
+                simSetLastError(nullptr,"Resolution mismatch.");
             if ( (imgData->buff1Img==nullptr)&&(imgData->buff2Img==nullptr)&&removeImg )
                 visionContainer->removeImageObject(handle); // otherwise, we have to explicitely free the image data with simVision.releaseBuffers
         }
         else
-            simSetLastError(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -870,8 +835,7 @@ void LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.workImgToBuffer1
 // --------------------------------------------------------------------------------------
-#define LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN "simVision.workImgToBuffer1@Vision"
-#define LUA_WORKIMGTOBUFFER1_COMMAND "simVision.workImgToBuffer1"
+#define LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN "workImgToBuffer1"
 
 const int inArgs_WORKIMGTOBUFFER1[]={
     1,
@@ -881,7 +845,7 @@ const int inArgs_WORKIMGTOBUFFER1[]={
 void LUA_WORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOBUFFER1,inArgs_WORKIMGTOBUFFER1[0],LUA_WORKIMGTOBUFFER1_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOBUFFER1,inArgs_WORKIMGTOBUFFER1[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -894,7 +858,7 @@ void LUA_WORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
                 imgData->buff1Img[i]=imgData->workImg[i];
         }
         else
-            simSetLastError(LUA_WORKIMGTOBUFFER1_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -904,8 +868,7 @@ void LUA_WORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.workImgToBuffer2
 // --------------------------------------------------------------------------------------
-#define LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN "simVision.workImgToBuffer2@Vision"
-#define LUA_WORKIMGTOBUFFER2_COMMAND "simVision.workImgToBuffer2"
+#define LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN "workImgToBuffer2"
 
 const int inArgs_WORKIMGTOBUFFER2[]={
     1,
@@ -915,7 +878,7 @@ const int inArgs_WORKIMGTOBUFFER2[]={
 void LUA_WORKIMGTOBUFFER2_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOBUFFER2,inArgs_WORKIMGTOBUFFER2[0],LUA_WORKIMGTOBUFFER2_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_WORKIMGTOBUFFER2,inArgs_WORKIMGTOBUFFER2[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -928,7 +891,7 @@ void LUA_WORKIMGTOBUFFER2_CALLBACK(SScriptCallBack* p)
                 imgData->buff2Img[i]=imgData->workImg[i];
         }
         else
-            simSetLastError(LUA_WORKIMGTOBUFFER2_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -938,8 +901,7 @@ void LUA_WORKIMGTOBUFFER2_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.swapBuffers
 // --------------------------------------------------------------------------------------
-#define LUA_SWAPBUFFERS_COMMAND_PLUGIN "simVision.swapBuffers@Vision"
-#define LUA_SWAPBUFFERS_COMMAND "simVision.swapBuffers"
+#define LUA_SWAPBUFFERS_COMMAND_PLUGIN "swapBuffers"
 
 const int inArgs_SWAPBUFFERS[]={
     1,
@@ -949,7 +911,7 @@ const int inArgs_SWAPBUFFERS[]={
 void LUA_SWAPBUFFERS_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SWAPBUFFERS,inArgs_SWAPBUFFERS[0],LUA_SWAPBUFFERS_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SWAPBUFFERS,inArgs_SWAPBUFFERS[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -965,7 +927,7 @@ void LUA_SWAPBUFFERS_CALLBACK(SScriptCallBack* p)
             imgData->buff2Img=tmp;
         }
         else
-            simSetLastError(LUA_SWAPBUFFERS_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -975,8 +937,7 @@ void LUA_SWAPBUFFERS_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.buffer1ToWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_BUFFER1TOWORKIMG_COMMAND_PLUGIN "simVision.buffer1ToWorkImg@Vision"
-#define LUA_BUFFER1TOWORKIMG_COMMAND "simVision.buffer1ToWorkImg"
+#define LUA_BUFFER1TOWORKIMG_COMMAND_PLUGIN "buffer1ToWorkImg"
 
 const int inArgs_BUFFER1TOWORKIMG[]={
     1,
@@ -986,7 +947,7 @@ const int inArgs_BUFFER1TOWORKIMG[]={
 void LUA_BUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_BUFFER1TOWORKIMG,inArgs_BUFFER1TOWORKIMG[0],LUA_BUFFER1TOWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_BUFFER1TOWORKIMG,inArgs_BUFFER1TOWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -999,7 +960,7 @@ void LUA_BUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
                 imgData->workImg[i]=imgData->buff1Img[i];
         }
         else
-            simSetLastError(LUA_BUFFER1TOWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1009,8 +970,7 @@ void LUA_BUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.buffer2ToWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_BUFFER2TOWORKIMG_COMMAND_PLUGIN "simVision.buffer2ToWorkImg@Vision"
-#define LUA_BUFFER2TOWORKIMG_COMMAND "simVision.buffer2ToWorkImg"
+#define LUA_BUFFER2TOWORKIMG_COMMAND_PLUGIN "buffer2ToWorkImg"
 
 const int inArgs_BUFFER2TOWORKIMG[]={
     1,
@@ -1020,7 +980,7 @@ const int inArgs_BUFFER2TOWORKIMG[]={
 void LUA_BUFFER2TOWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_BUFFER2TOWORKIMG,inArgs_BUFFER2TOWORKIMG[0],LUA_BUFFER2TOWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_BUFFER2TOWORKIMG,inArgs_BUFFER2TOWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1033,7 +993,7 @@ void LUA_BUFFER2TOWORKIMG_CALLBACK(SScriptCallBack* p)
                 imgData->workImg[i]=imgData->buff2Img[i];
         }
         else
-            simSetLastError(LUA_BUFFER2TOWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1043,8 +1003,7 @@ void LUA_BUFFER2TOWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.swapWorkImgWithBuffer1
 // --------------------------------------------------------------------------------------
-#define LUA_SWAPWORKIMGWITHBUFFER1_COMMAND_PLUGIN "simVision.swapWorkImgWithBuffer1@Vision"
-#define LUA_SWAPWORKIMGWITHBUFFER1_COMMAND "simVision.swapWorkImgWithBuffer1"
+#define LUA_SWAPWORKIMGWITHBUFFER1_COMMAND_PLUGIN "swapWorkImgWithBuffer1"
 
 const int inArgs_SWAPWORKIMGWITHBUFFER1[]={
     1,
@@ -1054,7 +1013,7 @@ const int inArgs_SWAPWORKIMGWITHBUFFER1[]={
 void LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SWAPWORKIMGWITHBUFFER1,inArgs_SWAPWORKIMGWITHBUFFER1[0],LUA_SWAPWORKIMGWITHBUFFER1_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SWAPWORKIMGWITHBUFFER1,inArgs_SWAPWORKIMGWITHBUFFER1[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1071,7 +1030,7 @@ void LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_SWAPWORKIMGWITHBUFFER1_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1081,8 +1040,7 @@ void LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.addWorkImgToBuffer1
 // --------------------------------------------------------------------------------------
-#define LUA_ADDWORKIMGTOBUFFER1_COMMAND_PLUGIN "simVision.addWorkImgToBuffer1@Vision"
-#define LUA_ADDWORKIMGTOBUFFER1_COMMAND "simVision.addWorkImgToBuffer1"
+#define LUA_ADDWORKIMGTOBUFFER1_COMMAND_PLUGIN "addWorkImgToBuffer1"
 
 const int inArgs_ADDWORKIMGTOBUFFER1[]={
     1,
@@ -1092,7 +1050,7 @@ const int inArgs_ADDWORKIMGTOBUFFER1[]={
 void LUA_ADDWORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_ADDWORKIMGTOBUFFER1,inArgs_ADDWORKIMGTOBUFFER1[0],LUA_ADDWORKIMGTOBUFFER1_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_ADDWORKIMGTOBUFFER1,inArgs_ADDWORKIMGTOBUFFER1[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1109,7 +1067,7 @@ void LUA_ADDWORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_ADDWORKIMGTOBUFFER1_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1119,8 +1077,7 @@ void LUA_ADDWORKIMGTOBUFFER1_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.subtractWorkImgFromBuffer1
 // --------------------------------------------------------------------------------------
-#define LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND_PLUGIN "simVision.subtractWorkImgFromBuffer1@Vision"
-#define LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND "simVision.subtractWorkImgFromBuffer1"
+#define LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND_PLUGIN "subtractWorkImgFromBuffer1"
 
 const int inArgs_SUBTRACTWORKIMGFROMBUFFER1[]={
     1,
@@ -1130,7 +1087,7 @@ const int inArgs_SUBTRACTWORKIMGFROMBUFFER1[]={
 void LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SUBTRACTWORKIMGFROMBUFFER1,inArgs_SUBTRACTWORKIMGFROMBUFFER1[0],LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SUBTRACTWORKIMGFROMBUFFER1,inArgs_SUBTRACTWORKIMGFROMBUFFER1[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1147,7 +1104,7 @@ void LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1157,8 +1114,7 @@ void LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.addBuffer1ToWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_ADDBUFFER1TOWORKIMG_COMMAND_PLUGIN "simVision.addBuffer1ToWorkImg@Vision"
-#define LUA_ADDBUFFER1TOWORKIMG_COMMAND "simVision.addBuffer1ToWorkImg"
+#define LUA_ADDBUFFER1TOWORKIMG_COMMAND_PLUGIN "addBuffer1ToWorkImg"
 
 const int inArgs_ADDBUFFER1TOWORKIMG[]={
     1,
@@ -1168,7 +1124,7 @@ const int inArgs_ADDBUFFER1TOWORKIMG[]={
 void LUA_ADDBUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_ADDBUFFER1TOWORKIMG,inArgs_ADDBUFFER1TOWORKIMG[0],LUA_ADDBUFFER1TOWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_ADDBUFFER1TOWORKIMG,inArgs_ADDBUFFER1TOWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1185,7 +1141,7 @@ void LUA_ADDBUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_ADDBUFFER1TOWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1195,8 +1151,7 @@ void LUA_ADDBUFFER1TOWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.subtractBuffer1FromWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND_PLUGIN "simVision.subtractBuffer1FromWorkImg@Vision"
-#define LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND "simVision.subtractBuffer1FromWorkImg"
+#define LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND_PLUGIN "subtractBuffer1FromWorkImg"
 
 const int inArgs_SUBTRACTBUFFER1FROMWORKIMG[]={
     1,
@@ -1206,7 +1161,7 @@ const int inArgs_SUBTRACTBUFFER1FROMWORKIMG[]={
 void LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SUBTRACTBUFFER1FROMWORKIMG,inArgs_SUBTRACTBUFFER1FROMWORKIMG[0],LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SUBTRACTBUFFER1FROMWORKIMG,inArgs_SUBTRACTBUFFER1FROMWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1223,7 +1178,7 @@ void LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1233,8 +1188,7 @@ void LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.multiplyWorkImgWithBuffer1
 // --------------------------------------------------------------------------------------
-#define LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND_PLUGIN "simVision.multiplyWorkImgWithBuffer1@Vision"
-#define LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND "simVision.multiplyWorkImgWithBuffer1"
+#define LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND_PLUGIN "multiplyWorkImgWithBuffer1"
 
 const int inArgs_MULTIPLYWORKIMGWITHBUFFER1[]={
     1,
@@ -1244,7 +1198,7 @@ const int inArgs_MULTIPLYWORKIMGWITHBUFFER1[]={
 void LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_MULTIPLYWORKIMGWITHBUFFER1,inArgs_MULTIPLYWORKIMGWITHBUFFER1[0],LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_MULTIPLYWORKIMGWITHBUFFER1,inArgs_MULTIPLYWORKIMGWITHBUFFER1[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1261,7 +1215,7 @@ void LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1271,8 +1225,7 @@ void LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.horizontalFlipWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_HORIZONTALFLIPWORKIMG_COMMAND_PLUGIN "simVision.horizontalFlipWorkImg@Vision"
-#define LUA_HORIZONTALFLIPWORKIMG_COMMAND "simVision.horizontalFlipWorkImg"
+#define LUA_HORIZONTALFLIPWORKIMG_COMMAND_PLUGIN "horizontalFlipWorkImg"
 
 const int inArgs_HORIZONTALFLIPWORKIMG[]={
     1,
@@ -1282,7 +1235,7 @@ const int inArgs_HORIZONTALFLIPWORKIMG[]={
 void LUA_HORIZONTALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_HORIZONTALFLIPWORKIMG,inArgs_HORIZONTALFLIPWORKIMG[0],LUA_HORIZONTALFLIPWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_HORIZONTALFLIPWORKIMG,inArgs_HORIZONTALFLIPWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1306,7 +1259,7 @@ void LUA_HORIZONTALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_HORIZONTALFLIPWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1316,8 +1269,7 @@ void LUA_HORIZONTALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.verticalFlipWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_VERTICALFLIPWORKIMG_COMMAND_PLUGIN "simVision.verticalFlipWorkImg@Vision"
-#define LUA_VERTICALFLIPWORKIMG_COMMAND "simVision.verticalFlipWorkImg"
+#define LUA_VERTICALFLIPWORKIMG_COMMAND_PLUGIN "verticalFlipWorkImg"
 
 const int inArgs_VERTICALFLIPWORKIMG[]={
     1,
@@ -1327,7 +1279,7 @@ const int inArgs_VERTICALFLIPWORKIMG[]={
 void LUA_VERTICALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_VERTICALFLIPWORKIMG,inArgs_VERTICALFLIPWORKIMG[0],LUA_VERTICALFLIPWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_VERTICALFLIPWORKIMG,inArgs_VERTICALFLIPWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1351,7 +1303,7 @@ void LUA_VERTICALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_VERTICALFLIPWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1361,8 +1313,7 @@ void LUA_VERTICALFLIPWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.uniformImgToWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN "simVision.uniformImgToWorkImg@Vision"
-#define LUA_UNIFORMIMGTOWORKIMG_COMMAND "simVision.uniformImgToWorkImg"
+#define LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN "uniformImgToWorkImg"
 
 const int inArgs_UNIFORMIMGTOWORKIMG[]={
     2,
@@ -1373,7 +1324,7 @@ const int inArgs_UNIFORMIMGTOWORKIMG[]={
 void LUA_UNIFORMIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_UNIFORMIMGTOWORKIMG,inArgs_UNIFORMIMGTOWORKIMG[0],LUA_UNIFORMIMGTOWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_UNIFORMIMGTOWORKIMG,inArgs_UNIFORMIMGTOWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1389,7 +1340,7 @@ void LUA_UNIFORMIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_UNIFORMIMGTOWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1399,8 +1350,7 @@ void LUA_UNIFORMIMGTOWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.normalizeWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_NORMALIZEWORKIMG_COMMAND_PLUGIN "simVision.normalizeWorkImg@Vision"
-#define LUA_NORMALIZEWORKIMG_COMMAND "simVision.normalizeWorkImg"
+#define LUA_NORMALIZEWORKIMG_COMMAND_PLUGIN "normalizeWorkImg"
 
 const int inArgs_NORMALIZEWORKIMG[]={
     1,
@@ -1410,7 +1360,7 @@ const int inArgs_NORMALIZEWORKIMG[]={
 void LUA_NORMALIZEWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_NORMALIZEWORKIMG,inArgs_NORMALIZEWORKIMG[0],LUA_NORMALIZEWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_NORMALIZEWORKIMG,inArgs_NORMALIZEWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1435,7 +1385,7 @@ void LUA_NORMALIZEWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_NORMALIZEWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1445,8 +1395,7 @@ void LUA_NORMALIZEWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.colorSegmentationOnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN "simVision.colorSegmentationOnWorkImg@Vision"
-#define LUA_COLORSEGMENTATIONONWORKIMG_COMMAND "simVision.colorSegmentationOnWorkImg"
+#define LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN "colorSegmentationOnWorkImg"
 
 const int inArgs_COLORSEGMENTATIONONWORKIMG[]={
     2,
@@ -1457,7 +1406,7 @@ const int inArgs_COLORSEGMENTATIONONWORKIMG[]={
 void LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_COLORSEGMENTATIONONWORKIMG,inArgs_COLORSEGMENTATIONONWORKIMG[0],LUA_COLORSEGMENTATIONONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_COLORSEGMENTATIONONWORKIMG,inArgs_COLORSEGMENTATIONONWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1495,7 +1444,7 @@ void LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_COLORSEGMENTATIONONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1521,8 +1470,7 @@ void colorFromIntensity(double intensity,int colorTable,double col[3])
 // --------------------------------------------------------------------------------------
 // simVision.intensityScaleOnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN "simVision.intensityScaleOnWorkImg@Vision"
-#define LUA_INTENSITYSCALEONWORKIMG_COMMAND "simVision.intensityScaleOnWorkImg"
+#define LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN "intensityScaleOnWorkImg"
 
 const int inArgs_INTENSITYSCALEONWORKIMG[]={
     4,
@@ -1535,7 +1483,7 @@ const int inArgs_INTENSITYSCALEONWORKIMG[]={
 void LUA_INTENSITYSCALEONWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_INTENSITYSCALEONWORKIMG,inArgs_INTENSITYSCALEONWORKIMG[0],LUA_INTENSITYSCALEONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_INTENSITYSCALEONWORKIMG,inArgs_INTENSITYSCALEONWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1571,7 +1519,7 @@ void LUA_INTENSITYSCALEONWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_INTENSITYSCALEONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1660,8 +1608,7 @@ void hslToRgb(double hsl[3],double rgb[3])
 // --------------------------------------------------------------------------------------
 // simVision.selectiveColorOnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN "simVision.selectiveColorOnWorkImg@Vision"
-#define LUA_SELECTIVECOLORONONWORKIMG_COMMAND "simVision.selectiveColorOnWorkImg"
+#define LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN "selectiveColorOnWorkImg"
 
 const int inArgs_SELECTIVECOLORONONWORKIMG[]={
     6,
@@ -1676,7 +1623,7 @@ const int inArgs_SELECTIVECOLORONONWORKIMG[]={
 void LUA_SELECTIVECOLORONONWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SELECTIVECOLORONONWORKIMG,inArgs_SELECTIVECOLORONONWORKIMG[0],LUA_SELECTIVECOLORONONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SELECTIVECOLORONONWORKIMG,inArgs_SELECTIVECOLORONONWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1788,7 +1735,7 @@ void LUA_SELECTIVECOLORONONWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_SELECTIVECOLORONONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1798,8 +1745,7 @@ void LUA_SELECTIVECOLORONONWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.scaleAndOffsetWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN "simVision.scaleAndOffsetWorkImg@Vision"
-#define LUA_SCALEANDOFFSETWORKIMG_COMMAND "simVision.scaleAndOffsetWorkImg"
+#define LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN "scaleAndOffsetWorkImg"
 
 const int inArgs_SCALEANDOFFSETWORKIMG[]={
     5,
@@ -1813,7 +1759,7 @@ const int inArgs_SCALEANDOFFSETWORKIMG[]={
 void LUA_SCALEANDOFFSETWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SCALEANDOFFSETWORKIMG,inArgs_SCALEANDOFFSETWORKIMG[0],LUA_SCALEANDOFFSETWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SCALEANDOFFSETWORKIMG,inArgs_SCALEANDOFFSETWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -1873,7 +1819,7 @@ void LUA_SCALEANDOFFSETWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_SCALEANDOFFSETWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -1957,8 +1903,7 @@ void drawLines(CVisionSensorData* imgData,const std::vector<int>& overlayLines,c
 // --------------------------------------------------------------------------------------
 // simVision.binaryWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_BINARYWORKIMG_COMMAND_PLUGIN "simVision.binaryWorkImg@Vision"
-#define LUA_BINARYWORKIMG_COMMAND "simVision.binaryWorkImg"
+#define LUA_BINARYWORKIMG_COMMAND_PLUGIN "binaryWorkImg"
 
 const int inArgs_BINARYWORKIMG[]={
     13,
@@ -1982,7 +1927,7 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
     CScriptFunctionData D;
     bool retVal=false;
     std::vector<float> returnData;
-    if (D.readDataFromStack(p->stackID,inArgs_BINARYWORKIMG,inArgs_BINARYWORKIMG[0]-1,LUA_BINARYWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_BINARYWORKIMG,inArgs_BINARYWORKIMG[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2141,7 +2086,7 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
                 drawLines(imgData,overlayLines,col);
         }
         else
-            simSetLastError(LUA_BINARYWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(retVal));
     if (returnData.size()>0)
@@ -2153,8 +2098,7 @@ void LUA_BINARYWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.blobDetectionOnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN "simVision.blobDetectionOnWorkImg@Vision"
-#define LUA_BLOBDETECTIONONWORKIMG_COMMAND "simVision.blobDetectionOnWorkImg"
+#define LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN "blobDetectionOnWorkImg"
 
 const int inArgs_BLOBDETECTIONONWORKIMG[]={
     5,
@@ -2170,7 +2114,7 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
     CScriptFunctionData D;
     bool retVal=false;
     std::vector<float> returnData;
-    if (D.readDataFromStack(p->stackID,inArgs_BLOBDETECTIONONWORKIMG,inArgs_BLOBDETECTIONONWORKIMG[0]-1,LUA_BLOBDETECTIONONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_BLOBDETECTIONONWORKIMG,inArgs_BLOBDETECTIONONWORKIMG[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2504,7 +2448,7 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
             // the other return data is filled-in here above!
         }
         else
-            simSetLastError(LUA_BLOBDETECTIONONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(retVal));
     if (returnData.size()>0)
@@ -2516,8 +2460,7 @@ void LUA_BLOBDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.sharpenWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_SHARPENWORKIMG_COMMAND_PLUGIN "simVision.sharpenWorkImg@Vision"
-#define LUA_SHARPENWORKIMG_COMMAND "simVision.sharpenWorkImg"
+#define LUA_SHARPENWORKIMG_COMMAND_PLUGIN "sharpenWorkImg"
 
 const int inArgs_SHARPENWORKIMG[]={
     1,
@@ -2527,7 +2470,7 @@ const int inArgs_SHARPENWORKIMG[]={
 void LUA_SHARPENWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SHARPENWORKIMG,inArgs_SHARPENWORKIMG[0],LUA_SHARPENWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SHARPENWORKIMG,inArgs_SHARPENWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2544,7 +2487,7 @@ void LUA_SHARPENWORKIMG_CALLBACK(SScriptCallBack* p)
             CImageProcess::deleteImage(im2);
         }
         else
-            simSetLastError(LUA_SHARPENWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -2554,8 +2497,7 @@ void LUA_SHARPENWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.edgeDetectionOnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN "simVision.edgeDetectionOnWorkImg@Vision"
-#define LUA_EDGEDETECTIONONWORKIMG_COMMAND "simVision.edgeDetectionOnWorkImg"
+#define LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN "edgeDetectionOnWorkImg"
 
 const int inArgs_EDGEDETECTIONONWORKIMG[]={
     2,
@@ -2566,7 +2508,7 @@ const int inArgs_EDGEDETECTIONONWORKIMG[]={
 void LUA_EDGEDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_EDGEDETECTIONONWORKIMG,inArgs_EDGEDETECTIONONWORKIMG[0],LUA_EDGEDETECTIONONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_EDGEDETECTIONONWORKIMG,inArgs_EDGEDETECTIONONWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2600,7 +2542,7 @@ void LUA_EDGEDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
             CImageProcess::deleteImage(im2);
         }
         else
-            simSetLastError(LUA_EDGEDETECTIONONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -2610,8 +2552,7 @@ void LUA_EDGEDETECTIONONWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.shiftWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_SHIFTWORKIMG_COMMAND_PLUGIN "simVision.shiftWorkImg@Vision"
-#define LUA_SHIFTWORKIMG_COMMAND "simVision.shiftWorkImg"
+#define LUA_SHIFTWORKIMG_COMMAND_PLUGIN "shiftWorkImg"
 
 const int inArgs_SHIFTWORKIMG[]={
     3,
@@ -2623,7 +2564,7 @@ const int inArgs_SHIFTWORKIMG[]={
 void LUA_SHIFTWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_SHIFTWORKIMG,inArgs_SHIFTWORKIMG[0],LUA_SHIFTWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_SHIFTWORKIMG,inArgs_SHIFTWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2692,7 +2633,7 @@ void LUA_SHIFTWORKIMG_CALLBACK(SScriptCallBack* p)
             CImageProcess::deleteImage(im2);
         }
         else
-            simSetLastError(LUA_SHIFTWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -2702,8 +2643,7 @@ void LUA_SHIFTWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.circularCutWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN "simVision.circularCutWorkImg@Vision"
-#define LUA_CIRCULARCUTWORKIMG_COMMAND "simVision.circularCutWorkImg"
+#define LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN "circularCutWorkImg"
 
 const int inArgs_CIRCULARCUTWORKIMG[]={
     3,
@@ -2715,7 +2655,7 @@ const int inArgs_CIRCULARCUTWORKIMG[]={
 void LUA_CIRCULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_CIRCULARCUTWORKIMG,inArgs_CIRCULARCUTWORKIMG[0],LUA_CIRCULARCUTWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_CIRCULARCUTWORKIMG,inArgs_CIRCULARCUTWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2770,7 +2710,7 @@ void LUA_CIRCULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_CIRCULARCUTWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -2780,8 +2720,7 @@ void LUA_CIRCULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.resizeWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_RESIZEWORKIMG_COMMAND_PLUGIN "simVision.resizeWorkImg@Vision"
-#define LUA_RESIZEWORKIMG_COMMAND "simVision.resizeWorkImg"
+#define LUA_RESIZEWORKIMG_COMMAND_PLUGIN "resizeWorkImg"
 
 const int inArgs_RESIZEWORKIMG[]={
     2,
@@ -2792,7 +2731,7 @@ const int inArgs_RESIZEWORKIMG[]={
 void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_RESIZEWORKIMG,inArgs_RESIZEWORKIMG[0],LUA_RESIZEWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_RESIZEWORKIMG,inArgs_RESIZEWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2851,7 +2790,7 @@ void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
             CImageProcess::deleteImage(im);
         }
         else
-            simSetLastError(LUA_RESIZEWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -2861,8 +2800,7 @@ void LUA_RESIZEWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.rotateWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_ROTATEWORKIMG_COMMAND_PLUGIN "simVision.rotateWorkImg@Vision"
-#define LUA_ROTATEWORKIMG_COMMAND "simVision.rotateWorkImg"
+#define LUA_ROTATEWORKIMG_COMMAND_PLUGIN "rotateWorkImg"
 
 const int inArgs_ROTATEWORKIMG[]={
     2,
@@ -2873,7 +2811,7 @@ const int inArgs_ROTATEWORKIMG[]={
 void LUA_ROTATEWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_ROTATEWORKIMG,inArgs_ROTATEWORKIMG[0],LUA_ROTATEWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_ROTATEWORKIMG,inArgs_ROTATEWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2921,7 +2859,7 @@ void LUA_ROTATEWORKIMG_CALLBACK(SScriptCallBack* p)
             CImageProcess::deleteImage(im);
         }
         else
-            simSetLastError(LUA_ROTATEWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -2931,8 +2869,7 @@ void LUA_ROTATEWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.matrix3x3OnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN "simVision.matrix3x3OnWorkImg@Vision"
-#define LUA_MATRIX3X3ONWORKIMG_COMMAND "simVision.matrix3x3OnWorkImg"
+#define LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN "matrix3x3OnWorkImg"
 
 const int inArgs_MATRIX3X3ONWORKIMG[]={
     4,
@@ -2945,7 +2882,7 @@ const int inArgs_MATRIX3X3ONWORKIMG[]={
 void LUA_MATRIX3X3ONWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_MATRIX3X3ONWORKIMG,inArgs_MATRIX3X3ONWORKIMG[0]-1,LUA_MATRIX3X3ONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_MATRIX3X3ONWORKIMG,inArgs_MATRIX3X3ONWORKIMG[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -2995,7 +2932,7 @@ void LUA_MATRIX3X3ONWORKIMG_CALLBACK(SScriptCallBack* p)
             CImageProcess::deleteImage(im2);
         }
         else
-            simSetLastError(LUA_MATRIX3X3ONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -3005,8 +2942,7 @@ void LUA_MATRIX3X3ONWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.matrix5x5OnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN "simVision.matrix5x5OnWorkImg@Vision"
-#define LUA_MATRIX5X5ONWORKIMG_COMMAND "simVision.matrix5x5OnWorkImg"
+#define LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN "matrix5x5OnWorkImg"
 
 const int inArgs_MATRIX5X5ONWORKIMG[]={
     4,
@@ -3019,7 +2955,7 @@ const int inArgs_MATRIX5X5ONWORKIMG[]={
 void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_MATRIX5X5ONWORKIMG,inArgs_MATRIX5X5ONWORKIMG[0]-1,LUA_MATRIX5X5ONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_MATRIX5X5ONWORKIMG,inArgs_MATRIX5X5ONWORKIMG[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -3069,7 +3005,7 @@ void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
             CImageProcess::deleteImage(im2);
         }
         else
-            simSetLastError(LUA_MATRIX5X5ONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -3079,8 +3015,7 @@ void LUA_MATRIX5X5ONWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.rectangularCutWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN "simVision.rectangularCutWorkImg@Vision"
-#define LUA_RECTANGULARCUTWORKIMG_COMMAND "simVision.rectangularCutWorkImg"
+#define LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN "rectangularCutWorkImg"
 
 const int inArgs_RECTANGULARCUTWORKIMG[]={
     3,
@@ -3092,7 +3027,7 @@ const int inArgs_RECTANGULARCUTWORKIMG[]={
 void LUA_RECTANGULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
-    if (D.readDataFromStack(p->stackID,inArgs_RECTANGULARCUTWORKIMG,inArgs_RECTANGULARCUTWORKIMG[0],LUA_RECTANGULARCUTWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_RECTANGULARCUTWORKIMG,inArgs_RECTANGULARCUTWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -3145,7 +3080,7 @@ void LUA_RECTANGULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_RECTANGULARCUTWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     D.writeDataToStack(p->stackID);
@@ -3155,8 +3090,7 @@ void LUA_RECTANGULARCUTWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.coordinatesFromWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN "simVision.coordinatesFromWorkImg@Vision"
-#define LUA_COORDINATESFROMWORKIMG_COMMAND "simVision.coordinatesFromWorkImg"
+#define LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN "coordinatesFromWorkImg"
 
 const int inArgs_COORDINATESFROMWORKIMG[]={
     4,
@@ -3171,7 +3105,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
     CScriptFunctionData D;
     std::vector<float> returnData;
     std::vector<unsigned char> returnCol;
-    if (D.readDataFromStack(p->stackID,inArgs_COORDINATESFROMWORKIMG,inArgs_COORDINATESFROMWORKIMG[0]-1,LUA_COORDINATESFROMWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_COORDINATESFROMWORKIMG,inArgs_COORDINATESFROMWORKIMG[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int hhandle=inData->at(0).int32Data[0];
@@ -3380,7 +3314,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_COORDINATESFROMWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     if (returnData.size()>0)
@@ -3401,8 +3335,7 @@ void LUA_COORDINATESFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.changedPixelsOnWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN "simVision.changedPixelsOnWorkImg@Vision"
-#define LUA_CHANGEDPIXELSONWORKIMG_COMMAND "simVision.changedPixelsOnWorkImg"
+#define LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN "changedPixelsOnWorkImg"
 
 const int inArgs_CHANGEDPIXELSONWORKIMG[]={
     2,
@@ -3414,7 +3347,7 @@ void LUA_CHANGEDPIXELSONWORKIMG_CALLBACK(SScriptCallBack* p)
 {
     CScriptFunctionData D;
     std::vector<float> returnData;
-    if (D.readDataFromStack(p->stackID,inArgs_CHANGEDPIXELSONWORKIMG,inArgs_CHANGEDPIXELSONWORKIMG[0],LUA_CHANGEDPIXELSONWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_CHANGEDPIXELSONWORKIMG,inArgs_CHANGEDPIXELSONWORKIMG[0],nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int handle=getVisionSensorHandle(inData->at(0).int32Data[0],p->objectID);
@@ -3467,7 +3400,7 @@ void LUA_CHANGEDPIXELSONWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     if (returnData.size()>0)
@@ -3479,8 +3412,7 @@ void LUA_CHANGEDPIXELSONWORKIMG_CALLBACK(SScriptCallBack* p)
 // --------------------------------------------------------------------------------------
 // simVision.velodyneDataFromWorkImg
 // --------------------------------------------------------------------------------------
-#define LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN "simVision.velodyneDataFromWorkImg@Vision"
-#define LUA_VELODYNEDATAFROMWORKIMG_COMMAND "simVision.velodyneDataFromWorkImg"
+#define LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN "velodyneDataFromWorkImg"
 
 const int inArgs_VELODYNEDATAFROMWORKIMG[]={
     4,
@@ -3495,7 +3427,7 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
     CScriptFunctionData D;
     std::vector<float> returnData;
     std::vector<unsigned char> returnCol;
-    if (D.readDataFromStack(p->stackID,inArgs_VELODYNEDATAFROMWORKIMG,inArgs_VELODYNEDATAFROMWORKIMG[0]-1,LUA_VELODYNEDATAFROMWORKIMG_COMMAND))
+    if (D.readDataFromStack(p->stackID,inArgs_VELODYNEDATAFROMWORKIMG,inArgs_VELODYNEDATAFROMWORKIMG[0]-1,nullptr))
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int hhandle=inData->at(0).int32Data[0];
@@ -3626,7 +3558,7 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
             }
         }
         else
-            simSetLastError(LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"Invalid handle or work image not initialized.");
+            simSetLastError(nullptr,"Invalid handle or work image not initialized.");
     }
     D.pushOutData(CScriptFunctionDataItem(false));
     if (returnData.size()>0)
@@ -3644,8 +3576,9 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 }
 // --------------------------------------------------------------------------------------
 
-SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
+SIM_DLLEXPORT int simInit(const char* pluginName)
 {
+    _pluginName=pluginName;
     char curDirAndFile[1024];
 #ifdef _WIN32
     #ifdef QT_COMPIL
@@ -3672,96 +3605,73 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     simLib=loadSimLibrary(temp.c_str());
     if (simLib==NULL)
     {
-        printf("simExtVision: error: could not find or correctly load the CoppeliaSim library. Cannot start the plugin.\n"); // cannot use simAddLog here.
-        return(0); // Means error, CoppeliaSim will unload this plugin
+        simAddLog(pluginName,sim_verbosity_errors,"could not find or correctly load the CoppeliaSim library. Cannot start the plugin.");
+        return(0);
     }
     if (getSimProcAddresses(simLib)==0)
     {
-        printf("simExtVision: error: could not find all required functions in the CoppeliaSim library. Cannot start the plugin.\n"); // cannot use simAddLog here.
+        simAddLog(pluginName,sim_verbosity_errors,"could not find all required functions in the CoppeliaSim library. Cannot start the plugin.");
         unloadSimLibrary(simLib);
-        return(0); // Means error, CoppeliaSim will unload this plugin
+        return(0);
     }
 
     // Register the new Lua commands:
 
     // Spherical vision sensor:
-    simRegisterScriptCallbackFunction(LUA_HANDLESPHERICAL_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLESPHERICAL_COMMAND,"(int passiveVisionSensorHandleForRGB,int[6] activeVisionSensorHandles,float horizontalAngle,float verticalAngle,int passiveVisionSensorHandleForDepth=-1)"),LUA_HANDLESPHERICAL_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLESPHERICAL_COMMAND_PLUGIN,nullptr,LUA_HANDLESPHERICAL_CALLBACK);
 
     // Anaglyph sensor:
-    simRegisterScriptCallbackFunction(LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN,strConCat("int result=",LUA_HANDLEANAGLYPHSTEREO_COMMAND,"(int passiveVisionSensorHandle,int[2] activeVisionSensorHandles,float[6] leftAndRightColors=nil)"),LUA_HANDLEANAGLYPHSTEREO_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEANAGLYPHSTEREO_COMMAND_PLUGIN,nullptr,LUA_HANDLEANAGLYPHSTEREO_CALLBACK);
 
 
     // HDL-64E:
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEHDL64E_COMMAND,"(int[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,float[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEHDL64E_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEHDL64E_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEHDL64E_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,strConCat("float[] points,string colorData=",LUA_HANDLEVELODYNEHDL64E_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMAND_PLUGIN,nullptr,LUA_CREATEVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEHDL64E_COMMAND_PLUGIN,nullptr,LUA_DESTROYVELODYNEHDL64E_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMAND_PLUGIN,nullptr,LUA_HANDLEVELODYNEHDL64E_CALLBACK);
 
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int velodyneHandle=",LUA_CREATEVELODYNEVPL16_COMMAND,"(int[4] visionSensorHandles,float frequency,int options=0,int pointSize=2,float[2] coloring_closeFarDist={1,5},float displayScalingFactor=1)"),LUA_CREATEVELODYNEVPL16_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN,strConCat("int result=",LUA_DESTROYVELODYNEVPL16_COMMAND,"(int velodyneHandle)"),LUA_DESTROYVELODYNEVPL16_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,strConCat("float[] points,string colorData=",LUA_HANDLEVELODYNEVPL16_COMMAND,"(int velodyneHandle,float dt)"),LUA_HANDLEVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMAND_PLUGIN,nullptr,LUA_CREATEVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEVPL16_COMMAND_PLUGIN,nullptr,LUA_DESTROYVELODYNEVPL16_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMAND_PLUGIN,nullptr,LUA_HANDLEVELODYNEVPL16_CALLBACK);
 
     // basic vision sensor processing:
-    simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORIMGTOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SENSORIMGTOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORIMG_COMMAND,"(int visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND,"(int visionSensorHandle,bool removeBuffer=true)"),LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_WORKIMGTOBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN,strConCat("",LUA_WORKIMGTOBUFFER2_COMMAND,"(int visionSensorHandle)"),LUA_WORKIMGTOBUFFER2_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SWAPBUFFERS_COMMAND_PLUGIN,strConCat("",LUA_SWAPBUFFERS_COMMAND,"(int visionSensorHandle)"),LUA_SWAPBUFFERS_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BUFFER1TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_BUFFER1TOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_BUFFER1TOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BUFFER2TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_BUFFER2TOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_BUFFER2TOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SWAPWORKIMGWITHBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_SWAPWORKIMGWITHBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_ADDWORKIMGTOBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_ADDWORKIMGTOBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_ADDWORKIMGTOBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_ADDBUFFER1TOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ADDBUFFER1TOWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_ADDBUFFER1TOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND_PLUGIN,strConCat("",LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND,"(int visionSensorHandle)"),LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_HORIZONTALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_HORIZONTALFLIPWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_HORIZONTALFLIPWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_VERTICALFLIPWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_VERTICALFLIPWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_VERTICALFLIPWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_UNIFORMIMGTOWORKIMG_COMMAND,"(int visionSensorHandle,float[3] color)"),LUA_UNIFORMIMGTOWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_NORMALIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_NORMALIZEWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_NORMALIZEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_COLORSEGMENTATIONONWORKIMG_COMMAND,"(int visionSensorHandle,float maxColorColorDistance)"),LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_INTENSITYSCALEONWORKIMG_COMMAND,"(int visionSensorHandle,float start,float end,bool greyScale)"),LUA_INTENSITYSCALEONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SELECTIVECOLORONONWORKIMG_COMMAND,"(int visionSensorHandle,float[3] color,float[3] colorTolerance,bool rgb,bool keep,bool removedPartToBuffer1)"),LUA_SELECTIVECOLORONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SCALEANDOFFSETWORKIMG_COMMAND,"(int visionSensorHandle,float[3] preOffset,float[3] scaling,float[3] postOffset,bool rgb)"),LUA_SCALEANDOFFSETWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BINARYWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BINARYWORKIMG_COMMAND,"(int visionSensorHandle,float threshold,float oneProportion,float oneTol,float xCenter,float xCenterTol,float yCenter,float yCenterTol,float orient,float orientTol,float roundness,bool enableTrigger,float[3] overlayColor={1.0,0.0,1.0})"),LUA_BINARYWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_BLOBDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold,float minBlobSize,bool modifyWorkImage,float[3] overlayColor={1.0,0.0,1.0})"),LUA_BLOBDETECTIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SHARPENWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHARPENWORKIMG_COMMAND,"(int visionSensorHandle)"),LUA_SHARPENWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_EDGEDETECTIONONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_EDGEDETECTIONONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_SHIFTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_SHIFTWORKIMG_COMMAND,"(int visionSensorHandle,float[2] shift,bool wrapAround)"),LUA_SHIFTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_CIRCULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,float radius,bool copyToBuffer1)"),LUA_CIRCULARCUTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_RESIZEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RESIZEWORKIMG_COMMAND,"(int visionSensorHandle,float[2] scaling)"),LUA_RESIZEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_ROTATEWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_ROTATEWORKIMG_COMMAND,"(int visionSensorHandle,float rotationAngle)"),LUA_ROTATEWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX3X3ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,float[9] matrix=nil)"),LUA_MATRIX3X3ONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_MATRIX5X5ONWORKIMG_COMMAND,"(int visionSensorHandle,int passes,float multiplier,float[25] matrix=nil)"),LUA_MATRIX5X5ONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,strConCat("",LUA_RECTANGULARCUTWORKIMG_COMMAND,"(int visionSensorHandle,float[2] sizes,bool copyToBuffer1)"),LUA_RECTANGULARCUTWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_DISTORT_COMMAND_PLUGIN,strConCat("",LUA_DISTORT_COMMAND,"(int visionSensorHandle,int[] pixelMap=nil,float[] depthScalings=nil)"),LUA_DISTORT_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_COORDINATESFROMWORKIMG_COMMAND,"(int visionSensorHandle,int[2] xyPointCount,bool evenlySpacedInAngularSpace,bool returnColorData=false)"),LUA_COORDINATESFROMWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket=",LUA_CHANGEDPIXELSONWORKIMG_COMMAND,"(int visionSensorHandle,float threshold)"),LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
-    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,strConCat("bool trigger,string packedDataPacket,string colorData=",LUA_VELODYNEDATAFROMWORKIMG_COMMAND,"(int visionSensorHandle,int[2] xyPointCount,float vAngle,bool returnColorData=false)"),LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
-
-
-    // Following for backward compatibility:
-    simRegisterScriptVariable(LUA_HANDLESPHERICAL_COMMANDOLD,LUA_HANDLESPHERICAL_COMMAND,-1);
-    simRegisterScriptVariable(LUA_HANDLEANAGLYPHSTEREO_COMMANDOLD,LUA_HANDLEANAGLYPHSTEREO_COMMAND,-1);
-    simRegisterScriptVariable(LUA_CREATEVELODYNEHDL64E_COMMANDOLD,LUA_CREATEVELODYNEHDL64E_COMMAND,-1);
-    simRegisterScriptVariable(LUA_DESTROYVELODYNEHDL64E_COMMANDOLD,LUA_DESTROYVELODYNEHDL64E_COMMAND,-1);
-    simRegisterScriptVariable(LUA_HANDLEVELODYNEHDL64E_COMMANDOLD,LUA_HANDLEVELODYNEHDL64E_COMMAND,-1);
-    simRegisterScriptVariable(LUA_CREATEVELODYNEVPL16_COMMANDOLD,LUA_CREATEVELODYNEVPL16_COMMAND,-1);
-    simRegisterScriptVariable(LUA_DESTROYVELODYNEVPL16_COMMANDOLD,LUA_DESTROYVELODYNEVPL16_COMMAND,-1);
-    simRegisterScriptVariable(LUA_HANDLEVELODYNEVPL16_COMMANDOLD,LUA_HANDLEVELODYNEVPL16_COMMAND,-1);
-    simRegisterScriptCallbackFunction(LUA_HANDLESPHERICAL_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_HANDLESPHERICAL_COMMAND," notation instead"),0);
-    simRegisterScriptCallbackFunction(LUA_HANDLEANAGLYPHSTEREO_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_HANDLEANAGLYPHSTEREO_COMMAND," notation instead"),0);
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEHDL64E_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_CREATEVELODYNEHDL64E_COMMAND," notation instead"),0);
-    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEHDL64E_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_DESTROYVELODYNEHDL64E_COMMAND," notation instead"),0);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEHDL64E_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_HANDLEVELODYNEHDL64E_COMMAND," notation instead"),0);
-    simRegisterScriptCallbackFunction(LUA_CREATEVELODYNEVPL16_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_CREATEVELODYNEVPL16_COMMAND," notation instead"),0);
-    simRegisterScriptCallbackFunction(LUA_DESTROYVELODYNEVPL16_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_DESTROYVELODYNEVPL16_COMMAND," notation instead"),0);
-    simRegisterScriptCallbackFunction(LUA_HANDLEVELODYNEVPL16_COMMANDOLD_PLUGIN,strConCat("Please use the ",LUA_HANDLEVELODYNEVPL16_COMMAND," notation instead"),0);
-    simRegisterScriptVariable("simExtVision_createVelodyne",LUA_CREATEVELODYNEHDL64E_COMMAND,-1);
-    simRegisterScriptVariable("simExtVision_destroyVelodyne",LUA_DESTROYVELODYNEHDL64E_COMMAND,-1);
-    simRegisterScriptVariable("simExtVision_handleVelodyne",LUA_HANDLEVELODYNEHDL64E_COMMAND,-1);
-
+    simRegisterScriptCallbackFunction(LUA_SENSORIMGTOWORKIMG_COMMAND_PLUGIN,nullptr,LUA_SENSORIMGTOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SENSORDEPTHMAPTOWORKIMG_COMMAND_PLUGIN,nullptr,LUA_SENSORDEPTHMAPTOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORIMG_COMMAND_PLUGIN,nullptr,LUA_WORKIMGTOSENSORIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOSENSORDEPTHMAP_COMMAND_PLUGIN,nullptr,LUA_WORKIMGTOSENSORDEPTHMAP_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER1_COMMAND_PLUGIN,nullptr,LUA_WORKIMGTOBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_WORKIMGTOBUFFER2_COMMAND_PLUGIN,nullptr,LUA_WORKIMGTOBUFFER2_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SWAPBUFFERS_COMMAND_PLUGIN,nullptr,LUA_SWAPBUFFERS_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BUFFER1TOWORKIMG_COMMAND_PLUGIN,nullptr,LUA_BUFFER1TOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BUFFER2TOWORKIMG_COMMAND_PLUGIN,nullptr,LUA_BUFFER2TOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SWAPWORKIMGWITHBUFFER1_COMMAND_PLUGIN,nullptr,LUA_SWAPWORKIMGWITHBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_ADDWORKIMGTOBUFFER1_COMMAND_PLUGIN,nullptr,LUA_ADDWORKIMGTOBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SUBTRACTWORKIMGFROMBUFFER1_COMMAND_PLUGIN,nullptr,LUA_SUBTRACTWORKIMGFROMBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_ADDBUFFER1TOWORKIMG_COMMAND_PLUGIN,nullptr,LUA_ADDBUFFER1TOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SUBTRACTBUFFER1FROMWORKIMG_COMMAND_PLUGIN,nullptr,LUA_SUBTRACTBUFFER1FROMWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MULTIPLYWORKIMGWITHBUFFER1_COMMAND_PLUGIN,nullptr,LUA_MULTIPLYWORKIMGWITHBUFFER1_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_HORIZONTALFLIPWORKIMG_COMMAND_PLUGIN,nullptr,LUA_HORIZONTALFLIPWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_VERTICALFLIPWORKIMG_COMMAND_PLUGIN,nullptr,LUA_VERTICALFLIPWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_UNIFORMIMGTOWORKIMG_COMMAND_PLUGIN,nullptr,LUA_UNIFORMIMGTOWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_NORMALIZEWORKIMG_COMMAND_PLUGIN,nullptr,LUA_NORMALIZEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_COLORSEGMENTATIONONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_COLORSEGMENTATIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_INTENSITYSCALEONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_INTENSITYSCALEONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SELECTIVECOLORONONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_SELECTIVECOLORONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SCALEANDOFFSETWORKIMG_COMMAND_PLUGIN,nullptr,LUA_SCALEANDOFFSETWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BINARYWORKIMG_COMMAND_PLUGIN,nullptr,LUA_BINARYWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_BLOBDETECTIONONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_BLOBDETECTIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SHARPENWORKIMG_COMMAND_PLUGIN,nullptr,LUA_SHARPENWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_EDGEDETECTIONONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_EDGEDETECTIONONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_SHIFTWORKIMG_COMMAND_PLUGIN,nullptr,LUA_SHIFTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CIRCULARCUTWORKIMG_COMMAND_PLUGIN,nullptr,LUA_CIRCULARCUTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_RESIZEWORKIMG_COMMAND_PLUGIN,nullptr,LUA_RESIZEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_ROTATEWORKIMG_COMMAND_PLUGIN,nullptr,LUA_ROTATEWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MATRIX3X3ONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_MATRIX3X3ONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_MATRIX5X5ONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_MATRIX5X5ONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_RECTANGULARCUTWORKIMG_COMMAND_PLUGIN,nullptr,LUA_RECTANGULARCUTWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_DISTORT_COMMAND_PLUGIN,nullptr,LUA_DISTORT_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_COORDINATESFROMWORKIMG_COMMAND_PLUGIN,nullptr,LUA_COORDINATESFROMWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_CHANGEDPIXELSONWORKIMG_COMMAND_PLUGIN,nullptr,LUA_CHANGEDPIXELSONWORKIMG_CALLBACK);
+    simRegisterScriptCallbackFunction(LUA_VELODYNEDATAFROMWORKIMG_COMMAND_PLUGIN,nullptr,LUA_VELODYNEDATAFROMWORKIMG_CALLBACK);
 
     visionContainer = new CVisionCont();
     visionTransfContainer = new CVisionTransfCont();
@@ -3769,14 +3679,15 @@ SIM_DLLEXPORT unsigned char simStart(void* reservedPointer,int reservedInt)
     visionVelodyneHDL64EContainer = new CVisionVelodyneHDL64ECont();
     visionVelodyneVPL16Container = new CVisionVelodyneVPL16Cont();
 
-    return(5);  // initialization went fine, we return the version number of this extension module (can be queried with simGetModuleName)
+    return(6);  // initialization went fine, we return the version number of this extension module (can be queried with simGetModuleName)
                 // Version 2 since 3.2.1
                 // Version 3 since 3.3.1
                 // Version 4 since 3.4.1
                 // Version 5 since 4.3.0
+                // Version 6 since 4.6.0
 }
 
-SIM_DLLEXPORT void simEnd()
+SIM_DLLEXPORT void simCleanup()
 {
     delete visionVelodyneVPL16Container;
     delete visionVelodyneHDL64EContainer;
@@ -3787,13 +3698,12 @@ SIM_DLLEXPORT void simEnd()
     unloadSimLibrary(simLib); // release the library
 }
 
-// This is the plugin messaging routine (i.e. CoppeliaSim calls this function very often, with various messages):
-SIM_DLLEXPORT void* simMessage(int message,int* auxiliaryData,void* customData,int* replyData)
+SIM_DLLEXPORT void simMsg(int message,int* auxData,void*)
 {
     if (message==sim_message_eventcallback_instancepass)
     {
         /* removed on 19.08.2021, not needed
-        if (auxiliaryData[0]&1)
+        if (auxData[0]&1)
             visionTransfContainer->removeInvalidObjects();
 
         for (std::map<int,CVisionSensorData*>::iterator it=_imgData.begin();it!=_imgData.end();it++)
@@ -3806,13 +3716,11 @@ SIM_DLLEXPORT void* simMessage(int message,int* auxiliaryData,void* customData,i
 
     if (message==sim_message_eventcallback_scriptstatedestroyed)
     {
-        visionContainer->removeImageObjectFromScriptHandle(auxiliaryData[0]);
-        visionTransfContainer->removeObjectFromScriptHandle(auxiliaryData[0]);
-        visionRemapContainer->removeObjectFromScriptHandle(auxiliaryData[0]);
-        visionVelodyneHDL64EContainer->removeObjectFromScriptHandle(auxiliaryData[0]);
-        visionVelodyneVPL16Container->removeObjectFromScriptHandle(auxiliaryData[0]);
+        visionContainer->removeImageObjectFromScriptHandle(auxData[0]);
+        visionTransfContainer->removeObjectFromScriptHandle(auxData[0]);
+        visionRemapContainer->removeObjectFromScriptHandle(auxData[0]);
+        visionVelodyneHDL64EContainer->removeObjectFromScriptHandle(auxData[0]);
+        visionVelodyneVPL16Container->removeObjectFromScriptHandle(auxData[0]);
     }
-
-    return(nullptr);
 }
 

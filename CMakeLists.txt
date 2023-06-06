@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(simExtVision)
+project(simVision)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_MACOSX_RPATH 1)
@@ -17,10 +17,10 @@ list(APPEND CMAKE_MODULE_PATH ${COPPELIASIM_INCLUDE_DIR}/cmake)
 find_package(CoppeliaSim 4.5.0.0 REQUIRED)
 
 coppeliasim_add_plugin(
-    simExtVision
+    simVision
     LEGACY
     SOURCES
-    simExtVision.cpp
+    simVision.cpp
     visionCont.cpp
     visionTransf.cpp
     visionTransfCont.cpp
@@ -41,7 +41,9 @@ coppeliasim_add_plugin(
     ${COPPELIASIM_INCLUDE_DIR}/simLib/scriptFunctionData.cpp
     ${COPPELIASIM_INCLUDE_DIR}/simLib/scriptFunctionDataItem.cpp
 )
-target_compile_definitions(simExtVision PRIVATE SIM_MATH_DOUBLE)
-target_include_directories(simExtVision PRIVATE ${COPPELIASIM_INCLUDE_DIR}/simMath)
+target_compile_definitions(simVision PRIVATE SIM_MATH_DOUBLE)
+target_include_directories(simVision PRIVATE ${COPPELIASIM_INCLUDE_DIR}/simMath)
+coppeliasim_add_lua(simVision.lua)
+coppeliasim_add_lua(simVision-ce.lua)
 coppeliasim_add_helpfile(simVision.htm)
 coppeliasim_add_helpfile(simVision.json SUBDIR index)
