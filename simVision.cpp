@@ -12,18 +12,6 @@
 #include <map>
 #include <algorithm>
 
-#ifdef _WIN32
-    #ifdef QT_COMPIL
-        #include <direct.h>
-    #else
-        #include <shlwapi.h>
-        #pragma comment(lib, "Shlwapi.lib")
-    #endif
-#endif
-#if defined (__linux) || defined (__APPLE__)
-    #include <unistd.h>
-#endif
-
 static LIBRARY simLib;
 static CVisionCont* visionContainer;
 static CVisionTransfCont* visionTransfContainer;
@@ -3576,41 +3564,18 @@ void LUA_VELODYNEDATAFROMWORKIMG_CALLBACK(SScriptCallBack* p)
 }
 // --------------------------------------------------------------------------------------
 
-SIM_DLLEXPORT int simInit(const char* pluginName)
+SIM_DLLEXPORT int simInit(SSimInit* info)
 {
-    _pluginName=pluginName;
-    char curDirAndFile[1024];
-#ifdef _WIN32
-    #ifdef QT_COMPIL
-        _getcwd(curDirAndFile, sizeof(curDirAndFile));
-    #else
-        GetModuleFileName(NULL,curDirAndFile,1023);
-        PathRemoveFileSpec(curDirAndFile);
-    #endif
-#elif defined (__linux) || defined (__APPLE__)
-    getcwd(curDirAndFile, sizeof(curDirAndFile));
-#endif
-
-    std::string currentDirAndPath(curDirAndFile);
-    std::string temp(currentDirAndPath);
-
-#ifdef _WIN32
-    temp+="\\coppeliaSim.dll";
-#elif defined (__linux)
-    temp+="/libcoppeliaSim.so";
-#elif defined (__APPLE__)
-    temp+="/libcoppeliaSim.dylib";
-#endif
-
-    simLib=loadSimLibrary(temp.c_str());
+    _pluginName=info->pluginName;
+    simLib=loadSimLibrary(info->coppeliaSimLibPath);
     if (simLib==NULL)
     {
-        simAddLog(pluginName,sim_verbosity_errors,"could not find or correctly load the CoppeliaSim library. Cannot start the plugin.");
+        simAddLog(info->pluginName,sim_verbosity_errors,"could not find or correctly load the CoppeliaSim library. Cannot start the plugin.");
         return(0);
     }
     if (getSimProcAddresses(simLib)==0)
     {
-        simAddLog(pluginName,sim_verbosity_errors,"could not find all required functions in the CoppeliaSim library. Cannot start the plugin.");
+        simAddLog(info->pluginName,sim_verbosity_errors,"could not find all required functions in the CoppeliaSim library. Cannot start the plugin.");
         unloadSimLibrary(simLib);
         return(0);
     }
@@ -3698,12 +3663,12 @@ SIM_DLLEXPORT void simCleanup()
     unloadSimLibrary(simLib); // release the library
 }
 
-SIM_DLLEXPORT void simMsg(int message,int* auxData,void*)
+SIM_DLLEXPORT void simMsg(SSimMsg* info)
 {
-    if (message==sim_message_eventcallback_instancepass)
+    if (info->msgId==sim_message_eventcallback_instancepass)
     {
         /* removed on 19.08.2021, not needed
-        if (auxData[0]&1)
+        if (info->auxData[0]&1)
             visionTransfContainer->removeInvalidObjects();
 
         for (std::map<int,CVisionSensorData*>::iterator it=_imgData.begin();it!=_imgData.end();it++)
@@ -3714,13 +3679,13 @@ SIM_DLLEXPORT void simMsg(int message,int* auxData,void*)
         */
     }
 
-    if (message==sim_message_eventcallback_scriptstatedestroyed)
+    if (info->msgId==sim_message_eventcallback_scriptstatedestroyed)
     {
-        visionContainer->removeImageObjectFromScriptHandle(auxData[0]);
-        visionTransfContainer->removeObjectFromScriptHandle(auxData[0]);
-        visionRemapContainer->removeObjectFromScriptHandle(auxData[0]);
-        visionVelodyneHDL64EContainer->removeObjectFromScriptHandle(auxData[0]);
-        visionVelodyneVPL16Container->removeObjectFromScriptHandle(auxData[0]);
+        visionContainer->removeImageObjectFromScriptHandle(info->auxData[0]);
+        visionTransfContainer->removeObjectFromScriptHandle(info->auxData[0]);
+        visionRemapContainer->removeObjectFromScriptHandle(info->auxData[0]);
+        visionVelodyneHDL64EContainer->removeObjectFromScriptHandle(info->auxData[0]);
+        visionVelodyneVPL16Container->removeObjectFromScriptHandle(info->auxData[0]);
     }
 }
 
