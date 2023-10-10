@@ -1,3 +1,3 @@
-local simVision=loadPlugin('simVision')
+local simVision = loadPlugin('simVision');
 
 return simVision
