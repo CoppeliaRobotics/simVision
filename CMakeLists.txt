@@ -20,17 +20,17 @@ coppeliasim_add_plugin(
     simVision
     LEGACY
     SOURCES
-    simVision.cpp
-    visionCont.cpp
-    visionTransf.cpp
-    visionTransfCont.cpp
-    visionRemap.cpp
-    visionRemapCont.cpp
-    visionVelodyneHDL64E.cpp
-    visionVelodyneHDL64ECont.cpp
-    visionVelodyneVPL16.cpp
-    visionVelodyneVPL16Cont.cpp
-    imageProcess.cpp
+    sourceCode/simVision.cpp
+    sourceCode/visionCont.cpp
+    sourceCode/visionTransf.cpp
+    sourceCode/visionTransfCont.cpp
+    sourceCode/visionRemap.cpp
+    sourceCode/visionRemapCont.cpp
+    sourceCode/visionVelodyneHDL64E.cpp
+    sourceCode/visionVelodyneHDL64ECont.cpp
+    sourceCode/visionVelodyneVPL16.cpp
+    sourceCode/visionVelodyneVPL16Cont.cpp
+    sourceCode/imageProcess.cpp
     ${COPPELIASIM_INCLUDE_DIR}/simMath/mathFuncs.cpp
     ${COPPELIASIM_INCLUDE_DIR}/simMath/3Vector.cpp
     ${COPPELIASIM_INCLUDE_DIR}/simMath/4Vector.cpp
@@ -43,7 +43,7 @@ coppeliasim_add_plugin(
 )
 target_compile_definitions(simVision PRIVATE SIM_MATH_DOUBLE)
 target_include_directories(simVision PRIVATE ${COPPELIASIM_INCLUDE_DIR}/simMath)
-coppeliasim_add_lua(simVision.lua)
-coppeliasim_add_lua(simVision-ce.lua)
-coppeliasim_add_helpfile(simVision.htm)
-coppeliasim_add_helpfile(simVision.json SUBDIR index)
+coppeliasim_add_lua(lua/simVision.lua)
+coppeliasim_add_lua(lua/simVision-ce.lua)
+coppeliasim_add_helpfile(helpFiles/simVision.htm)
+coppeliasim_add_helpfile(helpFiles/index/simVision.json SUBDIR index)
