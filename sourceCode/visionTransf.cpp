@@ -115,17 +115,17 @@ bool CVisionTransf::doAllObjectsExistAndAreVisionSensors() const
 {
     if (_passiveVisionSensorHandle!=-1)
     {
-        if (simGetObjectType(_passiveVisionSensorHandle)!=sim_object_visionsensor_type)
+        if (simGetObjectType(_passiveVisionSensorHandle)!=sim_sceneobject_visionsensor)
             return(false);
     }
     if (_passiveVisionSensorHandleForDepth!=-1)
     {
-        if (simGetObjectType(_passiveVisionSensorHandleForDepth)!=sim_object_visionsensor_type)
+        if (simGetObjectType(_passiveVisionSensorHandleForDepth)!=sim_sceneobject_visionsensor)
             return(false);
     }
     for (int i=0;i<6;i++)
     {
-        if (simGetObjectType(_activeVisionSensorHandles[i])!=sim_object_visionsensor_type)
+        if (simGetObjectType(_activeVisionSensorHandles[i])!=sim_sceneobject_visionsensor)
             return(false);
     }
     return(true);

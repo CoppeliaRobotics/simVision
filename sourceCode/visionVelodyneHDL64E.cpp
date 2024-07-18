@@ -62,12 +62,12 @@ bool CVisionVelodyneHDL64E::doAllObjectsExistAndAreVisionSensors() const
 {
     for (int i=0;i<4;i++)
     {
-        if (simGetObjectType(_visionSensorHandles[i])!=sim_object_visionsensor_type)
+        if (simGetObjectType(_visionSensorHandles[i])!=sim_sceneobject_visionsensor)
             return(false);
     }
     if (_newPtCloudHandle!=-1)
     {
-        if (simGetObjectType(_newPtCloudHandle)!=sim_object_pointcloud_type)
+        if (simGetObjectType(_newPtCloudHandle)!=sim_sceneobject_pointcloud)
             return(false);
         double maxVoxelS;
         int maxPtsPerVoxel;

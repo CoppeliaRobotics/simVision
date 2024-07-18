@@ -40,7 +40,7 @@ void LUA_DISTORT_CALLBACK(SScriptCallBack* p)
     {
         std::vector<CScriptFunctionDataItem>* inData=D.getInDataPtr();
         int visionSensorHandle=inData->at(0).int32Data[0];
-        if (simGetObjectType(visionSensorHandle)==sim_object_visionsensor_type)
+        if (simGetObjectType(visionSensorHandle)==sim_sceneobject_visionsensor)
         {
             int r[2];
             simGetVisionSensorRes(visionSensorHandle,r);
@@ -205,11 +205,11 @@ void LUA_HANDLEANAGLYPHSTEREO_CALLBACK(SScriptCallBack* p)
         int rightSensorHandle=inData->at(1).int32Data[1];
         // Check the object types:
         bool existAndAreVisionSensors=true;
-        if (simGetObjectType(passiveVisionSensorHande)!=sim_object_visionsensor_type)
+        if (simGetObjectType(passiveVisionSensorHande)!=sim_sceneobject_visionsensor)
             existAndAreVisionSensors=false;
-        if (simGetObjectType(leftSensorHandle)!=sim_object_visionsensor_type)
+        if (simGetObjectType(leftSensorHandle)!=sim_sceneobject_visionsensor)
             existAndAreVisionSensors=false;
-        if (simGetObjectType(rightSensorHandle)!=sim_object_visionsensor_type)
+        if (simGetObjectType(rightSensorHandle)!=sim_sceneobject_visionsensor)
             existAndAreVisionSensors=false;
         if (existAndAreVisionSensors)
         { // check the sensor resolutions:
